@@ -5,6 +5,7 @@ import {
   IconRouteAltLeft,
   IconSteeringWheel,
 } from '@tabler/icons-react'
+import { DriveAhead } from '#/components/DriveAhead'
 import { MapLegend } from '#/components/MapLegend'
 import {
   CorridorToggle,
@@ -14,9 +15,14 @@ import {
   routeSummary,
 } from '#/components/TripParts'
 import { Button } from '#/components/ui/button'
-import { useSetSearch } from '#/hooks/use-app-search'
+import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
+import { useFuelStats, useStations } from '#/hooks/use-stations'
 import { useTrip, useTripActions, useTripProgress } from '#/hooks/use-trip'
-import { stopsAhead } from '#/lib/pricing'
+import {
+  stationsAheadByHeading,
+  stationsAheadOnRoute,
+  stopsAhead,
+} from '#/lib/pricing'
 import { cn } from '#/lib/utils'
 import { locationStore, startDriving, stopDriving } from '#/stores/location'
 import { m } from '#/paraglide/messages'
@@ -28,6 +34,10 @@ export function TripCard({ collapsed = false }: { collapsed?: boolean }) {
   const trip = useTrip()
   const setSearch = useSetSearch()
   const driving = useSelector(locationStore, (s) => s.driving)
+  const fix = useSelector(locationStore, (s) => s.fix)
+  const { stations } = useStations()
+  const { fuel } = useAppSearch()
+  const stats = useFuelStats(fuel)
   const { travelledKm, offRoute } = useTripProgress(trip)
   const { rerouteFromHere } = useTripActions()
   const { along } = trip
@@ -36,6 +46,20 @@ export function TripCard({ collapsed = false }: { collapsed?: boolean }) {
     along &&
     (travelledKm != null ? stopsAhead(along, travelledKm) : along.candidates)
   const top = pool?.slice(0, SHOWN) ?? []
+  // Drive mode: the next station down the route, or by heading once off it.
+  const ahead = !driving
+    ? null
+    : along && travelledKm != null
+      ? stationsAheadOnRoute(along, travelledKm).map((a) => ({
+          ...a,
+          tier: along.tiers.get(a.station.id) ?? (-1 as const),
+        }))
+      : fix
+        ? stationsAheadByHeading(stations, fuel, fix, fix.heading).map((a) => ({
+            ...a,
+            tier: stats.ranks.get(a.station.id)?.tier ?? (-1 as const),
+          }))
+        : null
   const summary = routeSummary(trip)
   const openList = () =>
     setSearch({ view: 'list', tab: 'trip' }, { push: true })
@@ -64,10 +88,20 @@ export function TripCard({ collapsed = false }: { collapsed?: boolean }) {
         </Button>
       </div>
 
+      {ahead && (
+        <DriveAhead
+          stops={ahead}
+          headingKnown={travelledKm != null || fix?.heading != null}
+          onSelect={(id) => setSearch({ station: id })}
+          className="px-4"
+        />
+      )}
+
       <div
         className={cn(
           'flex min-h-8 items-center gap-3 px-4 pt-1.5 pb-1',
-          collapsed && 'max-lg:hidden',
+          (collapsed || ahead) && 'max-lg:hidden',
+          ahead && 'border-t',
         )}
       >
         <CorridorToggle value={trip.corridorKm} />
@@ -108,7 +142,10 @@ export function TripCard({ collapsed = false }: { collapsed?: boolean }) {
               travelledKm={travelledKm}
               size={driving ? 'lg' : 'default'}
               onSelect={(id) => setSearch({ station: id })}
-              className={cn('px-4', collapsed && i > 0 && 'max-lg:hidden')}
+              className={cn(
+                'px-4',
+                collapsed && (i > 0 || ahead) && 'max-lg:hidden',
+              )}
             />
           ))}
         </div>

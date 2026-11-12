@@ -98,5 +98,14 @@
   "in_distance": "in {distance}",
   "off_route_notice": "You're off the route.",
   "reroute": "Reroute from here",
-  "detour": "{minutes} min detour"
+  "detour": "{minutes} min detour",
+  "ahead_closest": "Next station ahead",
+  "ahead_nearest": "Nearest station",
+  "ahead_none": "No stations ahead within {distance}.",
+  "ahead_strip": "Prices over the next {distance}",
+  "tier_0": "Among the cheapest",
+  "tier_1": "Cheaper",
+  "tier_2": "Average",
+  "tier_3": "Pricier",
+  "tier_4": "Among the priciest"
 }

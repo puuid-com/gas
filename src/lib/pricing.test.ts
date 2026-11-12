@@ -5,6 +5,8 @@ import {
   cheapestNear,
   computeFuelStats,
   median,
+  roadSegments,
+  stationsAheadByHeading,
   stationsAlongRoute,
   stopsAhead,
   tierFor,
@@ -12,7 +14,12 @@ import {
 import type { Station } from './stations'
 
 let n = 0
-const station = (region: string, regular: number | null, lng = -73.6, lat = 45.5): Station => ({
+const station = (
+  region: string,
+  regular: number | null,
+  lng = -73.6,
+  lat = 45.5,
+): Station => ({
   id: `s${++n}`,
   name: `S${n}`,
   brand: null,
@@ -51,7 +58,12 @@ describe('computeFuelStats', () => {
 
   it('orders regions by their cheapest price', () => {
     expect(stats.regions.map((r) => r.region)).toEqual(['B', 'A'])
-    expect(stats.byRegion.get('A')).toMatchObject({ count: 4, min: 170, median: 175, max: 190 })
+    expect(stats.byRegion.get('A')).toMatchObject({
+      count: 4,
+      min: 170,
+      median: 175,
+      max: 190,
+    })
   })
 
   it('shares rank and the region star between tied stations', () => {
@@ -59,7 +71,12 @@ describe('computeFuelStats', () => {
     expect(a.cheapestIds).toHaveLength(2)
     const ranks = stations.slice(0, 4).map((s) => stats.ranks.get(s.id)!)
     expect(ranks.map((r) => r.rank)).toEqual([3, 1, 1, 4])
-    expect(ranks.map((r) => r.regionCheapest)).toEqual([false, true, true, false])
+    expect(ranks.map((r) => r.regionCheapest)).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ])
     expect(ranks.map((r) => r.tier)).toEqual([2, 0, 0, 3])
   })
 
@@ -77,12 +94,18 @@ describe('cheapestNear', () => {
 
   it('keeps stations within the radius, cheapest first', () => {
     const result = cheapestNear([north, south, far], 'regular', origin, 10)
-    expect(result.candidates.map((c) => c.station.id)).toEqual([south.id, north.id])
+    expect(result.candidates.map((c) => c.station.id)).toEqual([
+      south.id,
+      north.id,
+    ])
     expect(result.localMedian).toBe(180)
   })
 
   it('puts stations ahead first when moving', () => {
-    const result = cheapestNear([north, south], 'regular', origin, 10, { heading: 0, speed: 25 })
+    const result = cheapestNear([north, south], 'regular', origin, 10, {
+      heading: 0,
+      speed: 25,
+    })
     expect(result.candidates.map((c) => [c.station.id, c.ahead])).toEqual([
       [north.id, true],
       [south.id, false],
@@ -101,7 +124,11 @@ describe('cheapestAlongRoute', () => {
   const offRoad = station('B', 170, -73.2, 45.03) // ~3.3 km off
   const cheapFar = station('B', 150, -73.5, 45.2) // ~22 km off
   const noFuel = station('B', null, -73.4, 45)
-  const stops = stationsAlongRoute([onRoad, nearby, offRoad, cheapFar, noFuel], line, 5)
+  const stops = stationsAlongRoute(
+    [onRoad, nearby, offRoad, cheapFar, noFuel],
+    line,
+    5,
+  )
 
   it('keeps stations within the widest corridor', () => {
     expect(stops.map((s) => s.station.id).sort()).toEqual(
@@ -111,7 +138,11 @@ describe('cheapestAlongRoute', () => {
 
   it('ranks by price, then by closeness to the route', () => {
     const result = cheapestAlongRoute(stops, 'regular', 5)
-    expect(result.candidates.map((c) => c.station.id)).toEqual([nearby.id, offRoad.id, onRoad.id])
+    expect(result.candidates.map((c) => c.station.id)).toEqual([
+      nearby.id,
+      offRoad.id,
+      onRoad.id,
+    ])
     expect(result.cheapestIds).toEqual(new Set([nearby.id, offRoad.id]))
     expect(result.median).toBe(170)
     expect(result.tiers.get(nearby.id)).toBe(0)
@@ -120,7 +151,10 @@ describe('cheapestAlongRoute', () => {
 
   it('narrows to the chosen corridor', () => {
     const result = cheapestAlongRoute(stops, 'regular', 2)
-    expect(result.candidates.map((c) => c.station.id)).toEqual([nearby.id, onRoad.id])
+    expect(result.candidates.map((c) => c.station.id)).toEqual([
+      nearby.id,
+      onRoad.id,
+    ])
     expect(result.candidates[0].alongKm).toBeCloseTo(39.3, 0)
   })
 })
@@ -132,11 +166,62 @@ describe('stopsAhead', () => {
   ])
   const early = station('A', 170, -73.9, 45) // ~7.9 km in
   const late = station('A', 180, -73.2, 45) // ~63 km in
-  const along = cheapestAlongRoute(stationsAlongRoute([early, late], line, 5), 'regular', 5)
+  const along = cheapestAlongRoute(
+    stationsAlongRoute([early, late], line, 5),
+    'regular',
+    5,
+  )
 
   it('drops stations already passed, with a little slack', () => {
-    expect(stopsAhead(along, 0).map((c) => c.station.id)).toEqual([early.id, late.id])
-    expect(stopsAhead(along, 8).map((c) => c.station.id)).toEqual([early.id, late.id])
+    expect(stopsAhead(along, 0).map((c) => c.station.id)).toEqual([
+      early.id,
+      late.id,
+    ])
+    expect(stopsAhead(along, 8).map((c) => c.station.id)).toEqual([
+      early.id,
+      late.id,
+    ])
     expect(stopsAhead(along, 9).map((c) => c.station.id)).toEqual([late.id])
+  })
+})
+
+describe('stationsAheadByHeading', () => {
+  const here = { lng: -73.6, lat: 45.5 }
+  const north = station('R', 1.5, -73.6, 45.55)
+  const south = station('R', 1.4, -73.6, 45.48)
+  const farNorth = station('R', 1.6, -73.6, 45.7)
+
+  it('keeps stations in front, nearest first', () => {
+    const ahead = stationsAheadByHeading(
+      [farNorth, south, north],
+      'regular',
+      here,
+      0,
+    )
+    expect(ahead.map((a) => a.station.id)).toEqual([north.id, farNorth.id])
+  })
+
+  it('falls back to every station without a heading', () => {
+    const ahead = stationsAheadByHeading([north, south], 'regular', here, null)
+    expect(ahead[0].station.id).toBe(south.id)
+  })
+})
+
+describe('roadSegments', () => {
+  it('switches colour halfway between stations and merges equal tiers', () => {
+    expect(
+      roadSegments([
+        { distanceKm: 10, tier: 0 },
+        { distanceKm: 30, tier: 0 },
+        { distanceKm: 50, tier: 4 },
+      ]),
+    ).toEqual([
+      { fromKm: 0, toKm: 40, tier: 0 },
+      { fromKm: 40, toKm: 100, tier: 4 },
+    ])
+  })
+
+  it('is empty with no stations', () => {
+    expect(roadSegments([])).toEqual([])
   })
 })

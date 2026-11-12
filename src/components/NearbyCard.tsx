@@ -1,5 +1,6 @@
 import { useSelector } from '@tanstack/react-store'
 import { IconPlayerStopFilled, IconSteeringWheel } from '@tabler/icons-react'
+import { DriveAhead } from '#/components/DriveAhead'
 import { MapLegend } from '#/components/MapLegend'
 import { StationRow } from '#/components/StationRow'
 import { Button } from '#/components/ui/button'
@@ -7,7 +8,11 @@ import { ToggleGroup, ToggleGroupItem } from '#/components/ui/toggle-group'
 import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
 import { useFuelStats, useStations } from '#/hooks/use-stations'
 import { formatPrice } from '#/lib/format'
-import { cheapestInBounds, cheapestNear } from '#/lib/pricing'
+import {
+  cheapestInBounds,
+  cheapestNear,
+  stationsAheadByHeading,
+} from '#/lib/pricing'
 import { stationsCount } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { mapStore } from '#/stores/map'
@@ -47,6 +52,13 @@ export function NearbyCard({ collapsed = false }: { collapsed?: boolean }) {
       ? cheapestInBounds(pool, fuel, bounds, null)
       : null
   const top = result?.candidates.slice(0, SHOWN) ?? []
+  const ahead =
+    driving && fix
+      ? stationsAheadByHeading(pool, fuel, fix, fix.heading).map((a) => ({
+          ...a,
+          tier: stats.ranks.get(a.station.id)?.tier ?? (-1 as const),
+        }))
+      : null
 
   return (
     <section className="flex flex-col">
@@ -69,10 +81,20 @@ export function NearbyCard({ collapsed = false }: { collapsed?: boolean }) {
         </Button>
       </div>
 
+      {ahead && (
+        <DriveAhead
+          stops={ahead}
+          headingKnown={fix?.heading != null}
+          onSelect={(id) => setSearch({ station: id })}
+          className="px-4"
+        />
+      )}
+
       <div
         className={cn(
           'flex min-h-8 items-center gap-3 px-4 pt-1.5 pb-1',
-          collapsed && 'max-lg:hidden',
+          (collapsed || ahead) && 'max-lg:hidden',
+          ahead && 'border-t',
         )}
       >
         {fix && (
@@ -123,11 +145,19 @@ export function NearbyCard({ collapsed = false }: { collapsed?: boolean }) {
             ahead={c.ahead}
             size={driving ? 'lg' : 'default'}
             onSelect={(id) => setSearch({ station: id })}
-            className={cn('px-4', collapsed && i > 0 && 'max-lg:hidden')}
+            className={cn(
+              'px-4',
+              collapsed && (i > 0 || ahead) && 'max-lg:hidden',
+            )}
           />
         ))}
         {result && top.length === 0 && (
-          <p className="px-4 py-3 text-xs text-muted-foreground">
+          <p
+            className={cn(
+              'px-4 py-3 text-xs text-muted-foreground',
+              collapsed && ahead && 'max-lg:hidden',
+            )}
+          >
             {fix ? m.no_nearby({ radius: `${radiusKm} km` }) : m.no_results()}
           </p>
         )}

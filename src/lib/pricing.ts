@@ -1,4 +1,11 @@
-import { angleDiff, bearingDeg, boundsOf, distanceKm, inBounds, locateOnRoute } from './geo'
+import {
+  angleDiff,
+  bearingDeg,
+  boundsOf,
+  distanceKm,
+  inBounds,
+  locateOnRoute,
+} from './geo'
 import type { Bounds, LngLat, RouteLine } from './geo'
 import type { Fuel, Station } from './stations'
 
@@ -103,7 +110,12 @@ export function computeFuelStats(
     byRegion: new Map(regions.map((r) => [r.region, r])),
     ranks,
     province: all.length
-      ? { count: all.length, min: all[0], median: median(all), max: all[all.length - 1] }
+      ? {
+          count: all.length,
+          min: all[0],
+          median: median(all),
+          max: all[all.length - 1],
+        }
       : null,
   }
 }
@@ -147,7 +159,9 @@ export function cheapestNear(
     if (d > radiusKm) continue
     const ahead =
       moving &&
-      (d < 0.2 || angleDiff(motion.heading!, bearingDeg(origin, station)) <= AHEAD_CONE_DEG)
+      (d < 0.2 ||
+        angleDiff(motion.heading!, bearingDeg(origin, station)) <=
+          AHEAD_CONE_DEG)
     pool.push({ station, price, distanceKm: d, ahead })
   }
 
@@ -260,5 +274,93 @@ const BEHIND_SLACK_KM = 0.3
 
 /** Drive mode on a trip: the candidates not yet passed, cheapest first. */
 export function stopsAhead(along: AlongRoute, travelledKm: number) {
-  return along.candidates.filter((c) => c.alongKm >= travelledKm - BEHIND_SLACK_KM)
+  return along.candidates.filter(
+    (c) => c.alongKm >= travelledKm - BEHIND_SLACK_KM,
+  )
+}
+
+/** How far down the road drive mode looks for the next station. */
+export const AHEAD_RANGE_KM = 100
+
+export interface AheadStop {
+  station: Station
+  price: number
+  /** Distance still to drive (route) or straight-line (heading), in km. */
+  distanceKm: number
+}
+
+/**
+ * Stations in the direction of travel within `rangeKm`, nearest first.
+ * Without a heading every station counts, so the nearest still shows.
+ */
+export function stationsAheadByHeading(
+  stations: ReadonlyArray<Station>,
+  fuel: Fuel,
+  origin: LngLat,
+  heading: number | null,
+  rangeKm = AHEAD_RANGE_KM,
+): Array<AheadStop> {
+  const out: Array<AheadStop> = []
+  for (const station of stations) {
+    const price = station.prices[fuel]
+    if (price == null) continue
+    const d = distanceKm(origin, station)
+    if (d > rangeKm) continue
+    if (
+      heading != null &&
+      d >= 0.2 &&
+      angleDiff(heading, bearingDeg(origin, station)) > AHEAD_CONE_DEG
+    )
+      continue
+    out.push({ station, price, distanceKm: d })
+  }
+  return out.sort((a, b) => a.distanceKm - b.distanceKm)
+}
+
+/** On a trip: the corridor's stations not yet passed, by distance to go. */
+export function stationsAheadOnRoute(
+  along: AlongRoute,
+  travelledKm: number,
+  rangeKm = AHEAD_RANGE_KM,
+): Array<AheadStop> {
+  const out: Array<AheadStop> = []
+  for (const c of along.candidates) {
+    const toGo = c.alongKm - travelledKm
+    if (toGo < -BEHIND_SLACK_KM || toGo > rangeKm) continue
+    out.push({
+      station: c.station,
+      price: c.price,
+      distanceKm: Math.max(0, toGo),
+    })
+  }
+  return out.sort((a, b) => a.distanceKm - b.distanceKm)
+}
+
+export interface RoadSegment {
+  fromKm: number
+  toKm: number
+  tier: Tier | -1
+}
+
+/**
+ * Colour the road ahead: every point takes the tier of the station closest
+ * to it, so the strip changes colour halfway between two stations.
+ */
+export function roadSegments(
+  stops: ReadonlyArray<{ distanceKm: number; tier: Tier | -1 }>,
+  rangeKm = AHEAD_RANGE_KM,
+): Array<RoadSegment> {
+  const inRange = stops.filter((s) => s.distanceKm <= rangeKm)
+  const segments: Array<RoadSegment> = []
+  inRange.forEach((s, i) => {
+    const fromKm = i === 0 ? 0 : (inRange[i - 1].distanceKm + s.distanceKm) / 2
+    const toKm =
+      i === inRange.length - 1
+        ? rangeKm
+        : (s.distanceKm + inRange[i + 1].distanceKm) / 2
+    const last = segments.at(-1)
+    if (last && last.tier === s.tier) last.toKm = toKm
+    else if (toKm > fromKm) segments.push({ fromKm, toKm, tier: s.tier })
+  })
+  return segments
 }
