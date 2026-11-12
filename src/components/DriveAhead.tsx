@@ -2,9 +2,9 @@ import { DirectionsButton } from '#/components/DirectionsButton'
 import { TIER_BG } from '#/components/TierMark'
 import { Button } from '#/components/ui/button'
 import { formatDistance } from '#/lib/geo'
-import { formatPrice } from '#/lib/format'
+import { formatCents, formatPrice } from '#/lib/format'
 import { stationTitle } from '#/lib/i18n'
-import { AHEAD_RANGE_KM, roadSegments } from '#/lib/pricing'
+import { AHEAD_RANGE_KM, cheaperAhead, roadBlocks } from '#/lib/pricing'
 import { cn } from '#/lib/utils'
 import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
@@ -51,6 +51,7 @@ export function DriveAhead({
 }) {
   const locale = getLocale()
   const next = stops.at(0)
+  const better = cheaperAhead(stops)
 
   if (!next) {
     return (
@@ -78,7 +79,7 @@ export function DriveAhead({
           <div className="text-5xl leading-none font-bold tracking-tight tabular-nums">
             {formatDistance(next.distanceKm, locale)}
           </div>
-          <div className="mt-1.5 truncate text-sm font-medium">
+          <div className="mt-1.5 truncate text-base font-medium">
             {stationTitle(next.station)}
           </div>
         </div>
@@ -101,56 +102,74 @@ export function DriveAhead({
         </div>
       </Button>
 
-      <RoadStrip stops={stops} currentId={next.station.id} />
+      {better && (
+        <Button
+          variant="outline"
+          onClick={() => onSelect(better.station.id)}
+          className="h-auto justify-start gap-3 px-3 py-2.5 text-left whitespace-normal"
+        >
+          <span
+            aria-hidden
+            className={cn('size-3 shrink-0 rounded-full', TIER_BG[better.tier])}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold">
+              {m.ahead_cheaper({
+                distance: formatDistance(better.distanceKm, locale),
+              })}
+            </span>
+            <span className="block truncate text-sm text-muted-foreground">
+              {stationTitle(better.station)}
+            </span>
+          </span>
+          <span className="shrink-0 text-right tabular-nums">
+            <span
+              className={cn(
+                'block text-xl leading-none font-semibold',
+                TIER_TEXT[better.tier],
+              )}
+            >
+              {formatPrice(better.price, locale)}
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {m.ahead_save({
+                amount: formatCents(next.price - better.price, locale),
+              })}
+            </span>
+          </span>
+        </Button>
+      )}
+
+      <RoadStrip stops={stops} />
 
       <DirectionsButton to={next.station} size="lg" />
     </div>
   )
 }
 
-/** 0–100 km ahead; each stretch takes the colour of its closest station. */
-function RoadStrip({
-  stops,
-  currentId,
-}: {
-  stops: ReadonlyArray<RatedStop>
-  currentId: string
-}) {
-  const segments = roadSegments(stops)
-  const pct = (km: number) =>
-    `${(Math.min(km, AHEAD_RANGE_KM) / AHEAD_RANGE_KM) * 100}%`
-  const current = stops.find((s) => s.station.id === currentId)
+/** The next 100 km in ten stretches, each in the colour of its best price. */
+function RoadStrip({ stops }: { stops: ReadonlyArray<RatedStop> }) {
+  const blocks = roadBlocks(stops)
 
   return (
-    <div aria-label={m.ahead_strip({ distance: `${AHEAD_RANGE_KM} km` })}>
-      <div className="relative h-3 overflow-hidden rounded-full bg-muted">
-        {segments.map((seg) => (
+    <div
+      role="img"
+      aria-label={m.ahead_strip({ distance: `${AHEAD_RANGE_KM} km` })}
+      className="flex flex-col gap-1.5"
+    >
+      <div className="flex gap-1">
+        {blocks.map((b) => (
           <span
-            key={seg.fromKm}
-            className={cn('absolute inset-y-0', TIER_BG[seg.tier])}
-            style={{ left: pct(seg.fromKm), width: pct(seg.toKm - seg.fromKm) }}
-          />
-        ))}
-        {stops.map((s) => (
-          <span
-            key={s.station.id}
-            aria-hidden
-            className="absolute inset-y-0 w-px bg-background/70"
-            style={{ left: pct(s.distanceKm) }}
+            key={b.fromKm}
+            className={cn(
+              'h-4 flex-1 rounded-sm',
+              b.tier === -1 ? 'bg-muted' : TIER_BG[b.tier],
+            )}
           />
         ))}
       </div>
-      <div className="relative h-3">
-        {current && (
-          <span
-            aria-hidden
-            className="absolute top-0.5 size-0 -translate-x-1/2 border-x-[6px] border-b-[7px] border-x-transparent border-b-foreground"
-            style={{ left: pct(current.distanceKm) }}
-          />
-        )}
-      </div>
-      <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
-        <span>0 km</span>
+      <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+        <span>{m.ahead_here()}</span>
         <span>{AHEAD_RANGE_KM / 2} km</span>
         <span>{AHEAD_RANGE_KM} km</span>
       </div>

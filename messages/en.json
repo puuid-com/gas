@@ -107,5 +107,8 @@
   "tier_1": "Cheaper",
   "tier_2": "Average",
   "tier_3": "Pricier",
-  "tier_4": "Among the priciest"
+  "tier_4": "Among the priciest",
+  "ahead_cheaper": "Cheaper in {distance}",
+  "ahead_save": "save {amount}/L",
+  "ahead_here": "You"
 }

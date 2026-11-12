@@ -336,31 +336,40 @@ export function stationsAheadOnRoute(
   return out.sort((a, b) => a.distanceKm - b.distanceKm)
 }
 
-export interface RoadSegment {
+/** Stretch of road ahead, coloured by the best price on it. */
+export interface RoadBlock {
   fromKm: number
-  toKm: number
+  /** Cheapest tier among its stations; -1 when it has none. */
   tier: Tier | -1
 }
 
-/**
- * Colour the road ahead: every point takes the tier of the station closest
- * to it, so the strip changes colour halfway between two stations.
- */
-export function roadSegments(
+/** Split the road ahead into equal stretches, each with its best tier. */
+export function roadBlocks(
   stops: ReadonlyArray<{ distanceKm: number; tier: Tier | -1 }>,
   rangeKm = AHEAD_RANGE_KM,
-): Array<RoadSegment> {
-  const inRange = stops.filter((s) => s.distanceKm <= rangeKm)
-  const segments: Array<RoadSegment> = []
-  inRange.forEach((s, i) => {
-    const fromKm = i === 0 ? 0 : (inRange[i - 1].distanceKm + s.distanceKm) / 2
-    const toKm =
-      i === inRange.length - 1
-        ? rangeKm
-        : (s.distanceKm + inRange[i + 1].distanceKm) / 2
-    const last = segments.at(-1)
-    if (last && last.tier === s.tier) last.toKm = toKm
-    else if (toKm > fromKm) segments.push({ fromKm, toKm, tier: s.tier })
-  })
-  return segments
+  count = 10,
+): Array<RoadBlock> {
+  const size = rangeKm / count
+  const blocks: Array<RoadBlock> = Array.from({ length: count }, (_, i) => ({
+    fromKm: i * size,
+    tier: -1,
+  }))
+  for (const s of stops) {
+    if (s.distanceKm > rangeKm || s.tier === -1) continue
+    const block = blocks[Math.min(count - 1, Math.floor(s.distanceKm / size))]
+    if (block.tier === -1 || s.tier < block.tier) block.tier = s.tier
+  }
+  return blocks
+}
+
+/** Smallest saving worth suggesting a farther station for, in cents. */
+const WORTH_CENTS = 2
+
+/** The cheapest station farther ahead, if it beats the next one enough. */
+export function cheaperAhead<T extends AheadStop>(stops: ReadonlyArray<T>) {
+  if (stops.length === 0) return null
+  const [next, ...rest] = stops
+  let best: T | null = null
+  for (const s of rest) if (!best || s.price < best.price) best = s
+  return best && next.price - best.price >= WORTH_CENTS ? best : null
 }

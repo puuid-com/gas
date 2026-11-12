@@ -5,7 +5,8 @@ import {
   cheapestNear,
   computeFuelStats,
   median,
-  roadSegments,
+  cheaperAhead,
+  roadBlocks,
   stationsAheadByHeading,
   stationsAlongRoute,
   stopsAhead,
@@ -207,21 +208,29 @@ describe('stationsAheadByHeading', () => {
   })
 })
 
-describe('roadSegments', () => {
-  it('switches colour halfway between stations and merges equal tiers', () => {
-    expect(
-      roadSegments([
-        { distanceKm: 10, tier: 0 },
-        { distanceKm: 30, tier: 0 },
-        { distanceKm: 50, tier: 4 },
-      ]),
-    ).toEqual([
-      { fromKm: 0, toKm: 40, tier: 0 },
-      { fromKm: 40, toKm: 100, tier: 4 },
+describe('roadBlocks', () => {
+  it('colours each 10 km stretch by its cheapest tier', () => {
+    const blocks = roadBlocks([
+      { distanceKm: 3, tier: 3 },
+      { distanceKm: 7, tier: 1 },
+      { distanceKm: 55, tier: 4 },
     ])
+    expect(blocks).toHaveLength(10)
+    expect(blocks[0].tier).toBe(1)
+    expect(blocks[1].tier).toBe(-1)
+    expect(blocks[5].tier).toBe(4)
+  })
+})
+
+describe('cheaperAhead', () => {
+  const at = (price: number, distanceKm: number) => ({
+    station: station('R', price),
+    price,
+    distanceKm,
   })
 
-  it('is empty with no stations', () => {
-    expect(roadSegments([])).toEqual([])
+  it('suggests a farther station only when it saves enough', () => {
+    expect(cheaperAhead([at(170, 1), at(169, 5)])).toBeNull()
+    expect(cheaperAhead([at(170, 1), at(165, 9), at(163, 20)])?.price).toBe(163)
   })
 })
