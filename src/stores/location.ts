@@ -1,5 +1,5 @@
 import { createStore } from '@tanstack/react-store'
-import { bearingDeg, distanceKm } from '#/lib/geo'
+import { createFixTracker } from '#/lib/location-fix'
 import type { LngLat } from '#/lib/geo'
 
 export type GeoStatus =
@@ -39,7 +39,8 @@ const RADIUS_KEY = 'plein:radius'
 function storedRadius(): RadiusKm {
   try {
     const value = Number(localStorage.getItem(RADIUS_KEY))
-    if ((RADII_KM as ReadonlyArray<number>).includes(value)) return value as RadiusKm
+    if ((RADII_KM as ReadonlyArray<number>).includes(value))
+      return value as RadiusKm
   } catch {
     // Ignore blocked storage.
   }
@@ -63,33 +64,10 @@ function errorStatus(err: GeolocationPositionError): GeoStatus {
   return 'unavailable'
 }
 
-/**
- * Turn a raw position into a fix. Many devices omit heading/speed, so derive
- * them from the previous fix once we've moved far enough to trust it.
- */
-function toFix(pos: GeolocationPosition, prev: Fix | null): Fix {
-  const { latitude: lat, longitude: lng, accuracy, heading, speed } = pos.coords
-  const next: Fix = {
-    lng,
-    lat,
-    accuracy,
-    heading: heading != null && !Number.isNaN(heading) ? heading : null,
-    speed: speed != null && !Number.isNaN(speed) ? speed : null,
-    ts: pos.timestamp,
-  }
-  if (prev) {
-    const km = distanceKm(prev, next)
-    const seconds = (next.ts - prev.ts) / 1000
-    if (next.speed == null && seconds > 0) next.speed = (km * 1000) / seconds
-    if (next.heading == null) {
-      next.heading = km * 1000 > Math.max(15, accuracy) ? bearingDeg(prev, next) : prev.heading
-    }
-  }
-  return next
-}
+let trackFix = createFixTracker()
 
 function onPosition(pos: GeolocationPosition) {
-  patch({ status: 'ok', fix: toFix(pos, locationStore.state.fix) })
+  patch({ status: 'ok', fix: trackFix(pos) })
 }
 
 function onError(err: GeolocationPositionError) {
@@ -97,7 +75,8 @@ function onError(err: GeolocationPositionError) {
   patch({ status: errorStatus(err) })
 }
 
-const supported = () => typeof navigator !== 'undefined' && 'geolocation' in navigator
+const supported = () =>
+  typeof navigator !== 'undefined' && 'geolocation' in navigator
 
 export function locateOnce(): Promise<Fix | null> {
   if (!supported()) {
@@ -128,6 +107,7 @@ export function startDriving() {
     return
   }
   if (watchId == null) {
+    trackFix = createFixTracker()
     if (!locationStore.state.fix) patch({ status: 'locating' })
     watchId = navigator.geolocation.watchPosition(onPosition, onError, {
       enableHighAccuracy: true,
@@ -161,7 +141,9 @@ export function setRadius(radiusKm: RadiusKm) {
 export async function initLocation() {
   patch({ radiusKm: storedRadius() })
   try {
-    const permission = await navigator.permissions.query({ name: 'geolocation' })
+    const permission = await navigator.permissions.query({
+      name: 'geolocation',
+    })
     if (permission.state === 'granted') await locateOnce()
   } catch {
     // Permissions API unavailable; wait for the user to ask.

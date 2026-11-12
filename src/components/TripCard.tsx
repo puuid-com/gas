@@ -32,10 +32,13 @@ export function TripCard({ collapsed = false }: { collapsed?: boolean }) {
   const { rerouteFromHere } = useTripActions()
   const { along } = trip
   // Driving along the route: skip what's already behind.
-  const pool = along && (travelledKm != null ? stopsAhead(along, travelledKm) : along.candidates)
+  const pool =
+    along &&
+    (travelledKm != null ? stopsAhead(along, travelledKm) : along.candidates)
   const top = pool?.slice(0, SHOWN) ?? []
   const summary = routeSummary(trip)
-  const openList = () => setSearch({ view: 'list', tab: 'trip' }, { push: true })
+  const openList = () =>
+    setSearch({ view: 'list', tab: 'trip' }, { push: true })
 
   return (
     <section className="flex flex-col">
@@ -45,13 +48,15 @@ export function TripCard({ collapsed = false }: { collapsed?: boolean }) {
             {m.trip_title({ place: trip.destinationName ?? m.trip_to() })}
           </h2>
           {summary && (
-            <p className="truncate text-xs text-muted-foreground tabular-nums">{summary}</p>
+            <p className="truncate text-xs text-muted-foreground tabular-nums">
+              {summary}
+            </p>
           )}
         </div>
         <Button
           variant={driving ? 'secondary' : 'outline'}
           size="sm"
-          className="h-8"
+          className={cn('h-11 px-3', driving && 'text-base')}
           onClick={driving ? stopDriving : startDriving}
         >
           {driving ? <IconPlayerStopFilled /> : <IconSteeringWheel />}
@@ -75,8 +80,15 @@ export function TripCard({ collapsed = false }: { collapsed?: boolean }) {
 
       {offRoute && (
         <div className="flex items-center gap-2 px-4 py-2">
-          <p className="min-w-0 flex-1 text-xs text-muted-foreground">{m.off_route_notice()}</p>
-          <Button variant="outline" size="sm" className="h-8" onClick={rerouteFromHere}>
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+            {m.off_route_notice()}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={rerouteFromHere}
+          >
             <IconRouteAltLeft />
             {m.reroute()}
           </Button>
@@ -118,7 +130,11 @@ export function TripCard({ collapsed = false }: { collapsed?: boolean }) {
 
       <MapLegend
         scope="route"
-        className={cn('border-t px-4 py-2', driving && 'hidden', collapsed && 'max-lg:hidden')}
+        className={cn(
+          'border-t px-4 py-2',
+          driving && 'hidden',
+          collapsed && 'max-lg:hidden',
+        )}
       />
     </section>
   )

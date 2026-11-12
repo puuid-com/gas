@@ -11,7 +11,13 @@ import { cheapestInBounds, cheapestNear } from '#/lib/pricing'
 import { stationsCount } from '#/lib/i18n'
 import { cn } from '#/lib/utils'
 import { mapStore } from '#/stores/map'
-import { RADII_KM, locationStore, setRadius, startDriving, stopDriving } from '#/stores/location'
+import {
+  RADII_KM,
+  locationStore,
+  setRadius,
+  startDriving,
+  stopDriving,
+} from '#/stores/location'
 import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
 import type { RadiusKm } from '#/stores/location'
@@ -46,12 +52,16 @@ export function NearbyCard({ collapsed = false }: { collapsed?: boolean }) {
     <section className="flex flex-col">
       <div className="flex items-center gap-2 px-4 pt-3">
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight">
-          {driving ? m.drive_active() : fix ? m.nearby_title() : m.in_view_title()}
+          {driving
+            ? m.drive_active()
+            : fix
+              ? m.nearby_title()
+              : m.in_view_title()}
         </h2>
         <Button
           variant={driving ? 'secondary' : 'outline'}
           size="sm"
-          className="h-8"
+          className={cn('h-11 px-3', driving && 'text-base')}
           onClick={driving ? stopDriving : startDriving}
         >
           {driving ? <IconPlayerStopFilled /> : <IconSteeringWheel />}
@@ -72,11 +82,17 @@ export function NearbyCard({ collapsed = false }: { collapsed?: boolean }) {
             variant="outline"
             spacing={0}
             value={String(radiusKm)}
-            onValueChange={(value) => value && setRadius(Number(value) as RadiusKm)}
+            onValueChange={(value) =>
+              value && setRadius(Number(value) as RadiusKm)
+            }
             aria-label={m.radius_label()}
           >
             {RADII_KM.map((km) => (
-              <ToggleGroupItem key={km} value={String(km)} className="h-7 px-2 tabular-nums">
+              <ToggleGroupItem
+                key={km}
+                value={String(km)}
+                className="h-7 px-2 tabular-nums"
+              >
                 {km} km
               </ToggleGroupItem>
             ))}
@@ -86,7 +102,10 @@ export function NearbyCard({ collapsed = false }: { collapsed?: boolean }) {
           <p className="truncate text-xs text-muted-foreground tabular-nums">
             {stationsCount(result.considered)}
             {fix && result.localMedian != null && (
-              <> · {m.median_short()} {formatPrice(result.localMedian, locale)}</>
+              <>
+                {' '}
+                · {m.median_short()} {formatPrice(result.localMedian, locale)}
+              </>
             )}
           </p>
         )}
@@ -115,7 +134,11 @@ export function NearbyCard({ collapsed = false }: { collapsed?: boolean }) {
       </div>
 
       <MapLegend
-        className={cn('border-t px-4 py-2', driving && 'hidden', collapsed && 'max-lg:hidden')}
+        className={cn(
+          'border-t px-4 py-2',
+          driving && 'hidden',
+          collapsed && 'max-lg:hidden',
+        )}
       />
       {driving && (
         <p

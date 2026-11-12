@@ -8,7 +8,11 @@ import type { MapPalette } from './palette'
 
 export const SOURCE_ID = 'stations'
 export const ROUTE_SOURCE_ID = 'route'
-export const INTERACTIVE_LAYERS = ['stations-circle', 'stations-label', 'stations-star']
+export const INTERACTIVE_LAYERS = [
+  'stations-circle',
+  'stations-label',
+  'stations-star',
+]
 
 const FONT = ['Noto Sans Bold']
 /** Labels take over from bare dots from this zoom. */
@@ -63,14 +67,26 @@ export function circleLayer(p: MapPalette): Circle {
         ['case', priced, 7, 4],
       ],
       'circle-stroke-color': p.halo,
-      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 4, 0.5, 10, 1.5],
+      'circle-stroke-width': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        4,
+        0.5,
+        10,
+        1.5,
+      ],
       'circle-opacity': ['case', focused, 1, 0.18],
       'circle-stroke-opacity': ['case', focused, 1, 0.18],
     },
   }
 }
 
-export function labelLayer(p: MapPalette, theme: string): Symbol {
+export function labelLayer(
+  p: MapPalette,
+  theme: string,
+  driving = false,
+): Symbol {
   return {
     id: 'stations-label',
     type: 'symbol',
@@ -79,12 +95,14 @@ export function labelLayer(p: MapPalette, theme: string): Symbol {
     layout: {
       'text-field': ['get', 'label'],
       'text-font': FONT,
-      'text-size': 12,
+      'text-size': driving ? 24 : 14,
+      'text-rotation-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
       'text-anchor': 'bottom',
       'text-offset': [0, -0.9],
       'icon-image': ['concat', `pill-${theme}-`, ['to-string', tier]],
       'icon-text-fit': 'both',
-      'icon-text-fit-padding': [1, 4, 0, 4],
+      'icon-text-fit-padding': driving ? [4, 8, 3, 8] : [2, 5, 1, 5],
       // Lower price = placed first, so the cheapest labels survive collisions.
       'symbol-sort-key': ['get', 'price'],
       'symbol-z-order': 'source',
@@ -95,7 +113,7 @@ export function labelLayer(p: MapPalette, theme: string): Symbol {
   }
 }
 
-export function starLayer(theme: string): Symbol {
+export function starLayer(theme: string, driving = false): Symbol {
   return {
     id: 'stations-star',
     type: 'symbol',
@@ -103,12 +121,16 @@ export function starLayer(theme: string): Symbol {
     layout: {
       'text-field': ['concat', '★ ', ['get', 'label']],
       'text-font': FONT,
-      'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 10, 12],
+      'text-size': driving
+        ? 24
+        : ['interpolate', ['linear'], ['zoom'], 4, 12, 10, 14],
+      'text-rotation-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
       'text-anchor': 'bottom',
       'text-offset': [0, -0.9],
       'icon-image': pillImageId(theme, 0),
       'icon-text-fit': 'both',
-      'icon-text-fit-padding': [1, 4, 0, 4],
+      'icon-text-fit-padding': driving ? [4, 8, 3, 8] : [2, 5, 1, 5],
       'symbol-sort-key': ['get', 'price'],
       'symbol-z-order': 'source',
     },
@@ -156,7 +178,11 @@ export function routeLayers(p: MapPalette): [Line, Line] {
       id: 'route-line',
       type: 'line',
       layout,
-      paint: { 'line-color': p.user, 'line-width': routeWidth(0), 'line-opacity': 0.85 },
+      paint: {
+        'line-color': p.user,
+        'line-width': routeWidth(0),
+        'line-opacity': 0.85,
+      },
     },
   ]
 }

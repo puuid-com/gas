@@ -114,7 +114,9 @@ export function StationMap() {
             price: price ?? 9999,
             label: price == null ? '' : formatPrice(price, locale),
             tier: along ? (routeTier ?? -1) : (rank?.tier ?? -1),
-            star: along ? along.cheapestIds.has(s.id) : (rank?.regionCheapest ?? false),
+            star: along
+              ? along.cheapestIds.has(s.id)
+              : (rank?.regionCheapest ?? false),
             dim: along
               ? routeTier == null || (ahead ? !ahead.has(s.id) : false)
               : region != null && s.region !== region,
@@ -128,7 +130,10 @@ export function StationMap() {
     () =>
       line && {
         type: 'Feature',
-        geometry: { type: 'LineString', coordinates: line.coords as Array<[number, number]> },
+        geometry: {
+          type: 'LineString',
+          coordinates: line.coords as Array<[number, number]>,
+        },
         properties: {},
       },
     [line],
@@ -160,7 +165,11 @@ export function StationMap() {
   useEffect(() => {
     const map = mapRef.current
     if (!loaded || !map || !line || locationStore.state.follow) return
-    map.fitBounds(line.bounds, { padding: mapPadding(), maxZoom: 14, duration: 900 })
+    map.fitBounds(line.bounds, {
+      padding: mapPadding(),
+      maxZoom: 14,
+      duration: 900,
+    })
   }, [loaded, line])
 
   // Drive mode: keep the user in frame, heading-up once they're moving.
@@ -170,11 +179,10 @@ export function StationMap() {
     const started = tracking && !followingRef.current
     followingRef.current = tracking
     if (!map || !tracking) return
-    const moving = fix.speed != null && fix.speed >= 3 && fix.heading != null
     map.easeTo({
       center: [fix.lng, fix.lat],
       zoom: started ? Math.max(map.getZoom(), 14) : undefined,
-      bearing: moving ? fix.heading! : map.getBearing(),
+      bearing: fix.heading ?? map.getBearing(),
       padding: mapPadding(),
       duration: started ? 1200 : 900,
       essential: true,
@@ -265,8 +273,10 @@ export function StationMap() {
       <Source id={SOURCE_ID} type="geojson" data={data}>
         <Layer {...circleLayer(palette)} />
         <Layer {...selectedLayer(palette, station)} />
-        {pillsFor === theme && <Layer {...labelLayer(palette, theme)} />}
-        {pillsFor === theme && <Layer {...starLayer(theme)} />}
+        {pillsFor === theme && (
+          <Layer {...labelLayer(palette, theme, driving)} />
+        )}
+        {pillsFor === theme && <Layer {...starLayer(theme, driving)} />}
       </Source>
       {routeData && (
         // Declared after the stations so they exist to slot under on re-add.
