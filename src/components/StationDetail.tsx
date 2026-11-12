@@ -50,10 +50,15 @@ export function StationDetail({
         aria-label={stationTitle(station)}
         className="flex flex-col gap-3 p-4"
       >
-        <div className="flex items-center gap-3">
-          <h2 className="min-w-0 flex-1 truncate text-base font-semibold">
-            {stationTitle(station)}
-          </h2>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-semibold break-words">
+              {stationTitle(station)}
+            </h2>
+            <p className="text-sm text-muted-foreground break-words">
+              {[station.address, station.city].filter(Boolean).join(', ')}
+            </p>
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -66,15 +71,18 @@ export function StationDetail({
         </div>
         <div>
           <p className="text-sm text-muted-foreground">
-            {fuelLabel(fuel)} · ¢/L
+            {m.sort_distance()}
+            {fix && <> · {m.straight_line()}</>}
           </p>
           <p
             className={cn(
               'font-bold tabular-nums tracking-tight',
-              price == null ? 'text-2xl' : 'text-6xl leading-none',
+              fix == null ? 'text-2xl' : 'text-5xl leading-tight',
             )}
           >
-            {price == null ? m.unavailable() : formatPrice(price, locale)}
+            {fix == null
+              ? m.unavailable()
+              : formatDistance(distanceKm(fix, station), locale)}
           </p>
         </div>
         <Button asChild className="h-14 w-full gap-3 text-lg">
