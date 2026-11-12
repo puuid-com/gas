@@ -1,4 +1,4 @@
-import { IconX } from '@tabler/icons-react'
+import { IconNavigation, IconX } from '@tabler/icons-react'
 import { DirectionsButton } from '#/components/DirectionsButton'
 import { RegionStar, TierBar } from '#/components/TierMark'
 import { Button } from '#/components/ui/button'
@@ -8,6 +8,7 @@ import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
 import { useTrip } from '#/hooks/use-trip'
 import { useFuelStats, useStations } from '#/hooks/use-stations'
 import { formatCents, formatPrice } from '#/lib/format'
+import { directionsUrl } from '#/lib/directions'
 import { distanceKm, formatDistance } from '#/lib/geo'
 import { locationStore } from '#/stores/location'
 import { fuelLabel, stationSubtitle, stationTitle } from '#/lib/i18n'
@@ -16,13 +17,20 @@ import { cn } from '#/lib/utils'
 import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
 
-export function StationDetail({ id, children }: { id: string; children?: React.ReactNode }) {
+export function StationDetail({
+  id,
+  children,
+}: {
+  id: string
+  children?: React.ReactNode
+}) {
   const { byId } = useStations()
   const { fuel } = useAppSearch()
   const setSearch = useSetSearch()
   const stats = useFuelStats(fuel)
   const locale = getLocale()
   const fix = useSelector(locationStore, (s) => s.fix)
+  const driving = useSelector(locationStore, (s) => s.driving)
   const trip = useTrip()
 
   const station = byId.get(id)
@@ -36,6 +44,53 @@ export function StationDetail({ id, children }: { id: string; children?: React.R
   const subtitle = stationSubtitle(station)
   const delta = price != null && region ? price - region.median : null
 
+  if (driving) {
+    return (
+      <section
+        aria-label={stationTitle(station)}
+        className="flex flex-col gap-3 p-4"
+      >
+        <div className="flex items-center gap-3">
+          <h2 className="min-w-0 flex-1 truncate text-base font-semibold">
+            {stationTitle(station)}
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 shrink-0"
+            aria-label={m.close()}
+            onClick={() => setSearch({ station: undefined })}
+          >
+            <IconX />
+          </Button>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {fuelLabel(fuel)} · ¢/L
+          </p>
+          <p
+            className={cn(
+              'font-bold tabular-nums tracking-tight',
+              price == null ? 'text-2xl' : 'text-6xl leading-none',
+            )}
+          >
+            {price == null ? m.unavailable() : formatPrice(price, locale)}
+          </p>
+        </div>
+        <Button asChild className="h-14 w-full gap-3 text-lg">
+          <a
+            href={directionsUrl('waze', station)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <IconNavigation className="size-5" />
+            {m.directions()} · Waze
+          </a>
+        </Button>
+      </section>
+    )
+  }
+
   return (
     <section aria-label={stationTitle(station)} className="flex flex-col">
       <div className="flex items-start gap-3 px-4 pt-4 pb-3">
@@ -43,7 +98,9 @@ export function StationDetail({ id, children }: { id: string; children?: React.R
           <h2 className="truncate text-base font-semibold tracking-tight">
             {stationTitle(station)}
           </h2>
-          {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
+          {subtitle && (
+            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+          )}
           <p className="text-xs text-muted-foreground">
             {station.address}
             {stop ? (
@@ -51,12 +108,14 @@ export function StationDetail({ id, children }: { id: string; children?: React.R
                 {' · '}
                 {alongKmLabel(stop.alongKm)} · {offsetLabel(stop, trip.detours)}
               </span>
-            ) : fix && (
-              <span className="tabular-nums">
-                {' · '}
-                {formatDistance(distanceKm(fix, station), locale)}{' '}
-                <span className="opacity-70">({m.straight_line()})</span>
-              </span>
+            ) : (
+              fix && (
+                <span className="tabular-nums">
+                  {' · '}
+                  {formatDistance(distanceKm(fix, station), locale)}{' '}
+                  <span className="opacity-70">({m.straight_line()})</span>
+                </span>
+              )
             )}
           </p>
         </div>
@@ -71,7 +130,11 @@ export function StationDetail({ id, children }: { id: string; children?: React.R
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 border-y" role="group" aria-label={m.prices_heading()}>
+      <div
+        className="grid grid-cols-3 border-y"
+        role="group"
+        aria-label={m.prices_heading()}
+      >
         {FUELS.map((f) => {
           const p = station.prices[f]
           return (
@@ -85,7 +148,9 @@ export function StationDetail({ id, children }: { id: string; children?: React.R
                 f === fuel ? 'bg-muted' : 'text-muted-foreground',
               )}
             >
-              <div className="text-[11px] tracking-wide uppercase">{fuelLabel(f)}</div>
+              <div className="text-[11px] tracking-wide uppercase">
+                {fuelLabel(f)}
+              </div>
               <div
                 className={cn(
                   'text-xl font-semibold tabular-nums tracking-tight',
@@ -109,7 +174,11 @@ export function StationDetail({ id, children }: { id: string; children?: React.R
                 {rank.regionCheapest && <RegionStar />}
                 {rank.rank === 1
                   ? m.rank_first({ region: station.region, total: rank.total })
-                  : m.rank_nth({ region: station.region, rank: rank.rank, total: rank.total })}
+                  : m.rank_nth({
+                      region: station.region,
+                      rank: rank.rank,
+                      total: rank.total,
+                    })}
               </span>
               {delta != null && (
                 <span className="text-muted-foreground">
@@ -124,7 +193,10 @@ export function StationDetail({ id, children }: { id: string; children?: React.R
           </div>
         )}
         {children}
-        <DirectionsButton to={station} then={stop ? (trip.destination ?? undefined) : undefined} />
+        <DirectionsButton
+          to={station}
+          then={stop ? (trip.destination ?? undefined) : undefined}
+        />
       </div>
     </section>
   )

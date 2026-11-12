@@ -17,7 +17,11 @@ export function supportsStops(app: NavApp) {
  * Directions to `to`, or, on a trip, through `to` on the way to `then`
  * (Apple's unified Maps URLs need iOS 18.4 / macOS 15.4).
  */
-export function directionsUrl(app: NavApp, { lat, lng }: LngLat, then?: LngLat) {
+export function directionsUrl(
+  app: NavApp,
+  { lat, lng }: LngLat,
+  then?: LngLat,
+) {
   if (then && supportsStops(app)) {
     const stop = `${lat},${lng}`
     const end = `${then.lat},${then.lng}`
@@ -40,11 +44,12 @@ const STORAGE_KEY = 'plein:nav-app'
 export function preferredNavApp(): NavApp {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored && (NAV_APPS as ReadonlyArray<string>).includes(stored)) return stored as NavApp
+    if (stored && (NAV_APPS as ReadonlyArray<string>).includes(stored))
+      return stored as NavApp
   } catch {
     // Ignore blocked storage.
   }
-  return /iPhone|iPad|Macintosh/.test(navigator.userAgent) ? 'apple' : 'google'
+  return 'waze'
 }
 
 export function rememberNavApp(app: NavApp) {
