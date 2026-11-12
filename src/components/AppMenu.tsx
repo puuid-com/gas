@@ -11,6 +11,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
+import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
+import { fuelLabel } from '#/lib/i18n'
+import { FUELS } from '#/lib/stations'
+import type { Fuel } from '#/lib/stations'
 import { useNow } from '#/hooks/use-now'
 import { useStations } from '#/hooks/use-stations'
 import { formatRelative } from '#/lib/format'
@@ -25,6 +29,8 @@ const LANGUAGES = [
 ] as const
 
 export function AppMenu({ onPlanTrip }: { onPlanTrip?: () => void }) {
+  const { fuel } = useAppSearch()
+  const setSearch = useSetSearch()
   const preference = useSelector(themeStore, (s) => s.preference)
   const { generatedAt } = useStations()
   const now = useNow()
@@ -37,6 +43,18 @@ export function AppMenu({ onPlanTrip }: { onPlanTrip?: () => void }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel>{m.fuel_label()}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={fuel}
+          onValueChange={(value) => setSearch({ fuel: value as Fuel })}
+        >
+          {FUELS.map((type) => (
+            <DropdownMenuRadioItem key={type} value={type}>
+              {fuelLabel(type)}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
         {onPlanTrip && (
           <>
             <DropdownMenuItem onSelect={onPlanTrip}>

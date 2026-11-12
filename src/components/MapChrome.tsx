@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { IconRoute, IconX } from '@tabler/icons-react'
-import { FuelToggle } from '#/components/FuelToggle'
 import { LocateButton } from '#/components/LocateButton'
 import { AppMenu } from '#/components/AppMenu'
 import { NearbyCard } from '#/components/NearbyCard'
@@ -68,11 +67,7 @@ export function MapChrome() {
         ref={headerRef}
         className="flex flex-col items-start gap-2 lg:hidden"
       >
-        <div className="pointer-events-auto flex w-full items-center justify-between gap-2">
-          <FuelToggle
-            className="w-auto shadow-md shadow-black/10"
-            itemClassName="h-11 flex-none px-3 data-[state=off]:bg-background"
-          />
+        <div className="pointer-events-auto flex w-full items-center justify-end gap-2">
           <div className="border bg-background [&_button]:size-11">
             <AppMenu
               onPlanTrip={() =>
