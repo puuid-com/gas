@@ -8,7 +8,7 @@ import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
 import { useTrip } from '#/hooks/use-trip'
 import { useFuelStats, useStations } from '#/hooks/use-stations'
 import { formatCents, formatPrice } from '#/lib/format'
-import { directionsUrl } from '#/lib/directions'
+import { directionsUrl, navAppLabel, preferredNavApp } from '#/lib/directions'
 import { distanceKm, formatDistance } from '#/lib/geo'
 import { locationStore } from '#/stores/location'
 import { fuelLabel, stationSubtitle, stationTitle } from '#/lib/i18n'
@@ -44,31 +44,32 @@ export function StationDetail({
   const subtitle = stationSubtitle(station)
   const delta = price != null && region ? price - region.median : null
 
-  if (driving) {
-    return (
-      <section
-        aria-label={stationTitle(station)}
-        className="flex flex-col gap-3 p-4"
-      >
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold break-words">
-              {stationTitle(station)}
-            </h2>
-            <p className="text-sm text-muted-foreground break-words">
-              {[station.address, station.city].filter(Boolean).join(', ')}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-11 shrink-0"
-            aria-label={m.close()}
-            onClick={() => setSearch({ station: undefined })}
-          >
-            <IconX />
-          </Button>
+  const navApp = preferredNavApp()
+  const compactDetail = (
+    <section
+      aria-label={stationTitle(station)}
+      className={cn('flex flex-col gap-4 p-4', !driving && 'lg:hidden')}
+    >
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold break-words">
+            {stationTitle(station)}
+          </h2>
+          <p className="text-sm text-muted-foreground break-words">
+            {[station.address, station.city].filter(Boolean).join(', ')}
+          </p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-11 shrink-0"
+          aria-label={m.close()}
+          onClick={() => setSearch({ station: undefined })}
+        >
+          <IconX />
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
           <p className="text-sm text-muted-foreground">
             {m.sort_distance()}
@@ -85,127 +86,153 @@ export function StationDetail({
               : formatDistance(distanceKm(fix, station), locale)}
           </p>
         </div>
-        <Button asChild className="h-14 w-full gap-3 text-lg">
-          <a
-            href={directionsUrl('waze', station)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <IconNavigation className="size-5" />
-            {m.directions()} · Waze
-          </a>
-        </Button>
-      </section>
-    )
-  }
-
-  return (
-    <section aria-label={stationTitle(station)} className="flex flex-col">
-      <div className="flex items-start gap-3 px-4 pt-4 pb-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-base font-semibold tracking-tight">
-            {stationTitle(station)}
-          </h2>
-          {subtitle && (
-            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {station.address}
-            {stop ? (
-              <span className="tabular-nums">
-                {' · '}
-                {alongKmLabel(stop.alongKm)} · {offsetLabel(stop, trip.detours)}
-              </span>
-            ) : (
-              fix && (
-                <span className="tabular-nums">
-                  {' · '}
-                  {formatDistance(distanceKm(fix, station), locale)}{' '}
-                  <span className="opacity-70">({m.straight_line()})</span>
-                </span>
-              )
-            )}
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {fuelLabel(fuel)} · ¢/L
+          </p>
+          <p className="text-3xl font-semibold tabular-nums tracking-tight">
+            {price == null ? m.unavailable() : formatPrice(price, locale)}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="-mt-1 -mr-2"
-          aria-label={m.close()}
-          onClick={() => setSearch({ station: undefined })}
-        >
-          <IconX />
-        </Button>
       </div>
+      <Button asChild className="h-16 w-full gap-3 text-base sm:text-lg">
+        <a
+          href={directionsUrl(
+            navApp,
+            station,
+            stop ? (trip.destination ?? undefined) : undefined,
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <IconNavigation className="size-5" />
+          {m.directions()} · {navAppLabel(navApp, locale)}
+        </a>
+      </Button>
+    </section>
+  )
 
-      <div
-        className="grid grid-cols-3 border-y"
-        role="group"
-        aria-label={m.prices_heading()}
+  if (driving) return compactDetail
+
+  return (
+    <>
+      {compactDetail}
+      <section
+        aria-label={stationTitle(station)}
+        className="hidden flex-col lg:flex"
       >
-        {FUELS.map((f) => {
-          const p = station.prices[f]
-          return (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={f === fuel}
-              onClick={() => setSearch({ fuel: f })}
-              className={cn(
-                'border-r px-4 py-2.5 text-left transition-colors last:border-r-0 hover:bg-muted/60',
-                f === fuel ? 'bg-muted' : 'text-muted-foreground',
+        <div className="flex items-start gap-3 px-4 pt-4 pb-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-base font-semibold tracking-tight">
+              {stationTitle(station)}
+            </h2>
+            {subtitle && (
+              <p className="truncate text-xs text-muted-foreground">
+                {subtitle}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {station.address}
+              {stop ? (
+                <span className="tabular-nums">
+                  {' · '}
+                  {alongKmLabel(stop.alongKm)} ·{' '}
+                  {offsetLabel(stop, trip.detours)}
+                </span>
+              ) : (
+                fix && (
+                  <span className="tabular-nums">
+                    {' · '}
+                    {formatDistance(distanceKm(fix, station), locale)}{' '}
+                    <span className="opacity-70">({m.straight_line()})</span>
+                  </span>
+                )
               )}
-            >
-              <div className="text-[11px] tracking-wide uppercase">
-                {fuelLabel(f)}
-              </div>
-              <div
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-mt-1 -mr-2"
+            aria-label={m.close()}
+            onClick={() => setSearch({ station: undefined })}
+          >
+            <IconX />
+          </Button>
+        </div>
+
+        <div
+          className="grid grid-cols-3 border-y"
+          role="group"
+          aria-label={m.prices_heading()}
+        >
+          {FUELS.map((f) => {
+            const p = station.prices[f]
+            return (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={f === fuel}
+                onClick={() => setSearch({ fuel: f })}
                 className={cn(
-                  'text-xl font-semibold tabular-nums tracking-tight',
-                  f === fuel && 'text-foreground',
-                  p == null && 'text-base font-normal',
+                  'border-r px-4 py-2.5 text-left transition-colors last:border-r-0 hover:bg-muted/60',
+                  f === fuel ? 'bg-muted' : 'text-muted-foreground',
                 )}
               >
-                {p == null ? '—' : formatPrice(p, locale)}
-              </div>
-            </button>
-          )
-        })}
-      </div>
+                <div className="text-[11px] tracking-wide uppercase">
+                  {fuelLabel(f)}
+                </div>
+                <div
+                  className={cn(
+                    'text-xl font-semibold tabular-nums tracking-tight',
+                    f === fuel && 'text-foreground',
+                    p == null && 'text-base font-normal',
+                  )}
+                >
+                  {p == null ? '—' : formatPrice(p, locale)}
+                </div>
+              </button>
+            )
+          })}
+        </div>
 
-      <div className="flex flex-col gap-3 p-4">
-        {rank && region && (
-          <div className="flex items-stretch gap-2.5 text-xs">
-            <TierBar tier={rank.tier} />
-            <div className="flex flex-col gap-0.5">
-              <span className="flex items-center gap-1.5 font-medium">
-                {rank.regionCheapest && <RegionStar />}
-                {rank.rank === 1
-                  ? m.rank_first({ region: station.region, total: rank.total })
-                  : m.rank_nth({
-                      region: station.region,
-                      rank: rank.rank,
-                      total: rank.total,
-                    })}
-              </span>
-              {delta != null && (
-                <span className="text-muted-foreground">
-                  {Math.abs(delta) < 0.05
-                    ? m.at_median()
-                    : delta < 0
-                      ? m.below_median({ value: formatCents(delta, locale) })
-                      : m.above_median({ value: formatCents(delta, locale) })}
+        <div className="flex flex-col gap-3 p-4">
+          {rank && region && (
+            <div className="flex items-stretch gap-2.5 text-xs">
+              <TierBar tier={rank.tier} />
+              <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1.5 font-medium">
+                  {rank.regionCheapest && <RegionStar />}
+                  {rank.rank === 1
+                    ? m.rank_first({
+                        region: station.region,
+                        total: rank.total,
+                      })
+                    : m.rank_nth({
+                        region: station.region,
+                        rank: rank.rank,
+                        total: rank.total,
+                      })}
                 </span>
-              )}
+                {delta != null && (
+                  <span className="text-muted-foreground">
+                    {Math.abs(delta) < 0.05
+                      ? m.at_median()
+                      : delta < 0
+                        ? m.below_median({ value: formatCents(delta, locale) })
+                        : m.above_median({ value: formatCents(delta, locale) })}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-        {children}
-        <DirectionsButton
-          to={station}
-          then={stop ? (trip.destination ?? undefined) : undefined}
-        />
-      </div>
-    </section>
+          )}
+          {children}
+          <DirectionsButton
+            to={station}
+            then={stop ? (trip.destination ?? undefined) : undefined}
+          />
+        </div>
+      </section>
+    </>
   )
 }

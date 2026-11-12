@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { IconRoute, IconX } from '@tabler/icons-react'
 import { FuelToggle } from '#/components/FuelToggle'
 import { LocateButton } from '#/components/LocateButton'
-import { MapSearchBar } from '#/components/MapSearchBar'
+import { AppMenu } from '#/components/AppMenu'
 import { NearbyCard } from '#/components/NearbyCard'
 import { StationDetail } from '#/components/StationDetail'
 import { TripCard } from '#/components/TripCard'
@@ -15,7 +15,10 @@ import { mapStore } from '#/stores/map'
 import { m } from '#/paraglide/messages'
 
 /** Report how much of the map a floating element covers (0 when hidden). */
-function useInset(ref: React.RefObject<HTMLElement | null>, edge: 'top' | 'bottom') {
+function useInset(
+  ref: React.RefObject<HTMLElement | null>,
+  edge: 'top' | 'bottom',
+) {
   useEffect(() => {
     const el = ref.current
     const parent = el?.offsetParent ?? el?.parentElement
@@ -24,9 +27,14 @@ function useInset(ref: React.RefObject<HTMLElement | null>, edge: 'top' | 'botto
       const r = el.getBoundingClientRect()
       const p = parent.getBoundingClientRect()
       // On wide screens the sheet is a corner card, not a band across the map.
-      const wide = edge === 'bottom' && matchMedia('(min-width: 1024px)').matches
+      const wide =
+        edge === 'bottom' && matchMedia('(min-width: 1024px)').matches
       const visible = !wide && el.offsetParent !== null && r.height > 0
-      const value = !visible ? 0 : edge === 'top' ? r.bottom - p.top : p.bottom - r.top
+      const value = !visible
+        ? 0
+        : edge === 'top'
+          ? r.bottom - p.top
+          : p.bottom - r.top
       mapStore.setState((s) => ({
         ...s,
         insets: { ...s.insets, [edge]: Math.max(0, value) },
@@ -56,15 +64,29 @@ export function MapChrome() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 flex flex-col p-3 pt-[max(env(safe-area-inset-top),0.75rem)] pb-[max(env(safe-area-inset-bottom),0.75rem)] lg:p-4">
-      <div ref={headerRef} className="flex flex-col items-start gap-2 lg:hidden">
-        <MapSearchBar className="pointer-events-auto w-full" />
-        <div className="pointer-events-auto flex max-w-full items-center gap-2">
+      <div
+        ref={headerRef}
+        className="flex flex-col items-start gap-2 lg:hidden"
+      >
+        <div className="pointer-events-auto flex w-full items-center justify-between gap-2">
           <FuelToggle
             className="w-auto shadow-md shadow-black/10"
-            itemClassName="h-8 flex-none px-3 data-[state=off]:bg-background"
+            itemClassName="h-11 flex-none px-3 data-[state=off]:bg-background"
           />
+          <div className="border bg-background [&_button]:size-11">
+            <AppMenu
+              onPlanTrip={() =>
+                setSearch({ view: 'list', tab: 'trip' }, { push: true })
+              }
+            />
+          </div>
+        </div>
+        <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2">
           {region && (
-            <RegionChip region={region} onClear={() => setSearch({ region: undefined })} />
+            <RegionChip
+              region={region}
+              onClear={() => setSearch({ region: undefined })}
+            />
           )}
           {to && <TripChip name={toName} onClear={clearTrip} />}
         </div>
@@ -73,7 +95,10 @@ export function MapChrome() {
       {(region || to) && (
         <div className="pointer-events-auto hidden items-center gap-2 self-start lg:flex">
           {region && (
-            <RegionChip region={region} onClear={() => setSearch({ region: undefined })} />
+            <RegionChip
+              region={region}
+              onClear={() => setSearch({ region: undefined })}
+            />
           )}
           {to && <TripChip name={toName} onClear={clearTrip} />}
         </div>
@@ -104,7 +129,11 @@ export function MapChrome() {
             >
               <span className="h-1 w-9 rounded-full bg-muted-foreground/40" />
             </button>
-            {to ? <TripCard collapsed={!expanded} /> : <NearbyCard collapsed={!expanded} />}
+            {to ? (
+              <TripCard collapsed={!expanded} />
+            ) : (
+              <NearbyCard collapsed={!expanded} />
+            )}
           </>
         )}
       </div>
@@ -112,7 +141,13 @@ export function MapChrome() {
   )
 }
 
-function RegionChip({ region, onClear }: { region: string; onClear: () => void }) {
+function RegionChip({
+  region,
+  onClear,
+}: {
+  region: string
+  onClear: () => void
+}) {
   return (
     <Button
       variant="outline"
@@ -127,7 +162,13 @@ function RegionChip({ region, onClear }: { region: string; onClear: () => void }
   )
 }
 
-function TripChip({ name, onClear }: { name: string | undefined; onClear: () => void }) {
+function TripChip({
+  name,
+  onClear,
+}: {
+  name: string | undefined
+  onClear: () => void
+}) {
   return (
     <Button
       variant="outline"

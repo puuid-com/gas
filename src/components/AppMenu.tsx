@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -23,7 +24,7 @@ const LANGUAGES = [
   { locale: 'en', label: 'English' },
 ] as const
 
-export function AppMenu() {
+export function AppMenu({ onPlanTrip }: { onPlanTrip?: () => void }) {
   const preference = useSelector(themeStore, (s) => s.preference)
   const { generatedAt } = useStations()
   const now = useNow()
@@ -36,6 +37,14 @@ export function AppMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
+        {onPlanTrip && (
+          <>
+            <DropdownMenuItem onSelect={onPlanTrip}>
+              {m.trip_plan()}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuLabel>{m.language_label()}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={getLocale()}
@@ -51,15 +60,25 @@ export function AppMenu() {
         <DropdownMenuLabel>{m.theme_label()}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={preference}
-          onValueChange={(value) => setThemePreference(value as ThemePreference)}
+          onValueChange={(value) =>
+            setThemePreference(value as ThemePreference)
+          }
         >
-          <DropdownMenuRadioItem value="system">{m.theme_system()}</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="light">{m.theme_light()}</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark">{m.theme_dark()}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">
+            {m.theme_system()}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="light">
+            {m.theme_light()}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">
+            {m.theme_dark()}
+          </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="font-normal" title={generatedAt}>
-          {m.updated({ time: formatRelative(new Date(generatedAt), getLocale(), now) })}
+          {m.updated({
+            time: formatRelative(new Date(generatedAt), getLocale(), now),
+          })}
         </DropdownMenuLabel>
       </DropdownMenuContent>
     </DropdownMenu>
