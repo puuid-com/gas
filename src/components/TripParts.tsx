@@ -24,21 +24,15 @@ export function TripStopRow({
   stop,
   along,
   detours,
-  travelledKm,
-  size,
   onSelect,
   className,
 }: {
   stop: RouteCandidate
   along: AlongRoute
   detours: Trip['detours']
-  /** Drive mode: show the distance still to go instead of the trip km. */
-  travelledKm?: number | null
-  size?: 'default' | 'lg'
   onSelect: (id: string) => void
   className?: string
 }) {
-  const locale = getLocale()
   const { station } = stop
   const offset = offsetLabel(stop, detours)
 
@@ -49,14 +43,7 @@ export function TripStopRow({
       tier={along.tiers.get(station.id) ?? -1}
       star={along.cheapestIds.has(station.id)}
       subtitle={station.city ? `${station.city} · ${offset}` : offset}
-      meta={
-        travelledKm != null
-          ? m.in_distance({
-              distance: formatDistance(Math.max(0, stop.alongKm - travelledKm), locale),
-            })
-          : alongKmLabel(stop.alongKm)
-      }
-      size={size}
+      meta={alongKmLabel(stop.alongKm)}
       onSelect={onSelect}
       className={className}
     />

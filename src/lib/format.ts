@@ -45,3 +45,12 @@ export function formatDuration(minutes: number, locale: string) {
   if (locale.startsWith('fr')) return `${h} h ${String(min).padStart(2, '0')}`
   return min ? `${h} h ${min} min` : `${h} h`
 }
+
+/** 4.5 → "$4.50" (en) / "4,50 $" (fr). */
+export function formatDollars(amount: number, locale: string) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'CAD',
+    currencyDisplay: 'narrowSymbol',
+  }).format(amount)
+}

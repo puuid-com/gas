@@ -24,6 +24,10 @@ export interface Fix extends LngLat {
 export const RADII_KM = [5, 10, 25] as const
 export type RadiusKm = (typeof RADII_KM)[number]
 
+/** Drive mode: how far ahead a station is still worth driving to. */
+export const AHEAD_RANGES_KM = [10, 25, 50, 100] as const
+export type AheadRangeKm = (typeof AHEAD_RANGES_KM)[number]
+
 interface LocationState {
   status: GeoStatus
   fix: Fix | null
@@ -32,19 +36,32 @@ interface LocationState {
   /** Camera tracks the user; cleared when they pan the map. */
   follow: boolean
   radiusKm: RadiusKm
+  aheadKm: AheadRangeKm
 }
 
 const RADIUS_KEY = 'plein:radius'
+const AHEAD_KEY = 'plein:ahead'
 
-function storedRadius(): RadiusKm {
+function stored<T extends number>(
+  key: string,
+  allowed: ReadonlyArray<T>,
+  fallback: T,
+): T {
   try {
-    const value = Number(localStorage.getItem(RADIUS_KEY))
-    if ((RADII_KM as ReadonlyArray<number>).includes(value))
-      return value as RadiusKm
+    const value = Number(localStorage.getItem(key))
+    if ((allowed as ReadonlyArray<number>).includes(value)) return value as T
   } catch {
     // Ignore blocked storage.
   }
-  return 10
+  return fallback
+}
+
+function remember(key: string, value: number) {
+  try {
+    localStorage.setItem(key, String(value))
+  } catch {
+    // Ignore blocked storage.
+  }
 }
 
 export const locationStore = createStore<LocationState>({
@@ -53,6 +70,7 @@ export const locationStore = createStore<LocationState>({
   driving: false,
   follow: false,
   radiusKm: 10,
+  aheadKm: 25,
 })
 
 const patch = (next: Partial<LocationState>) =>
@@ -129,17 +147,21 @@ export function setFollow(follow: boolean) {
 }
 
 export function setRadius(radiusKm: RadiusKm) {
-  try {
-    localStorage.setItem(RADIUS_KEY, String(radiusKm))
-  } catch {
-    // Ignore blocked storage.
-  }
+  remember(RADIUS_KEY, radiusKm)
   patch({ radiusKm })
+}
+
+export function setAheadRange(aheadKm: AheadRangeKm) {
+  remember(AHEAD_KEY, aheadKm)
+  patch({ aheadKm })
 }
 
 /** Restore preferences and, if permission was already granted, locate quietly. */
 export async function initLocation() {
-  patch({ radiusKm: storedRadius() })
+  patch({
+    radiusKm: stored(RADIUS_KEY, RADII_KM, 10),
+    aheadKm: stored(AHEAD_KEY, AHEAD_RANGES_KM, 25),
+  })
   try {
     const permission = await navigator.permissions.query({
       name: 'geolocation',

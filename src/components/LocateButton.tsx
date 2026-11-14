@@ -16,7 +16,10 @@ export function LocateButton() {
   if (driving) {
     if (follow) return null
     return (
-      <Button className="h-11 px-4 shadow-lg" onClick={() => setFollow(true)}>
+      <Button
+        className="h-12 px-4 text-sm shadow-lg shadow-black/20"
+        onClick={() => setFollow(true)}
+      >
         <IconCurrentLocation />
         {m.recenter()}
       </Button>
@@ -28,7 +31,7 @@ export function LocateButton() {
     <Button
       variant="outline"
       size="icon"
-      className="size-11 bg-background shadow-lg dark:bg-background"
+      className="size-11 bg-background shadow-lg shadow-black/10 lg:size-10 dark:bg-background"
       aria-label={locating ? m.locating() : m.locate()}
       disabled={locating}
       onClick={async () => {

@@ -31,9 +31,14 @@ const PILL_RADIUS = 5
 
 /**
  * Stretchable rounded "price pill" used behind labels with icon-text-fit.
- * The cheapest tier is filled; the others are outlined in their tier colour.
+ * The cheapest tier is filled and the others outlined in their tier colour;
+ * `pick` is drive mode's recommended station, inverted so it stands apart.
  */
-export function drawPill(tier: Tier, palette: MapPalette, pixelRatio = 2) {
+export function drawPill(
+  kind: Tier | 'pick',
+  palette: MapPalette,
+  pixelRatio = 2,
+) {
   const r = PILL_RADIUS * pixelRatio
   const size = r * 2 + 2
   const canvas = document.createElement('canvas')
@@ -41,12 +46,13 @@ export function drawPill(tier: Tier, palette: MapPalette, pixelRatio = 2) {
   canvas.height = size
   const ctx = canvas.getContext('2d')!
   const line = 1.5 * pixelRatio
+  const edge = kind === 'pick' ? palette.text : palette.tiers[kind]
   ctx.beginPath()
   ctx.roundRect(line / 2, line / 2, size - line, size - line, r - line / 2)
-  ctx.fillStyle = tier === 0 ? palette.tiers[0] : palette.halo
+  ctx.fillStyle = kind === 'pick' || kind === 0 ? edge : palette.halo
   ctx.fill()
   ctx.lineWidth = line
-  ctx.strokeStyle = palette.tiers[tier]
+  ctx.strokeStyle = edge
   ctx.stroke()
   return {
     data: ctx.getImageData(0, 0, size, size),
@@ -55,7 +61,12 @@ export function drawPill(tier: Tier, palette: MapPalette, pixelRatio = 2) {
       stretchX: [[r, size - r]] as Array<[number, number]>,
       stretchY: [[r, size - r]] as Array<[number, number]>,
       // Text may sit over the corners; icon-text-fit padding keeps it clear.
-      content: [r / 2, r / 2, size - r / 2, size - r / 2] as [number, number, number, number],
+      content: [r / 2, r / 2, size - r / 2, size - r / 2] as [
+        number,
+        number,
+        number,
+        number,
+      ],
     },
   }
 }

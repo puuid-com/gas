@@ -3,13 +3,19 @@ import { StationList } from '#/components/StationList'
 import { TripPanel } from '#/components/TripPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
+import { useNow } from '#/hooks/use-now'
+import { useStations } from '#/hooks/use-stations'
+import { formatRelative } from '#/lib/format'
 import { SOURCE_URL } from '#/lib/stations'
+import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
 
-/** Stations / Trip / Regions: the sidebar on desktop, the list view on mobile. */
+/** Stations / Trip / Regions: a floating list on desktop, a full screen on phones. */
 export function Panel() {
   const { tab } = useAppSearch()
   const setSearch = useSetSearch()
+  const { generatedAt } = useStations()
+  const now = useNow()
 
   return (
     <Tabs
@@ -37,7 +43,7 @@ export function Panel() {
       <TabsContent value="regions" className="flex min-h-0 flex-col data-[state=inactive]:hidden">
         <RegionList />
       </TabsContent>
-      <footer className="border-t px-3 py-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] text-[11px] text-muted-foreground">
+      <footer className="flex flex-wrap gap-x-3 border-t px-3 py-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] text-[11px] text-muted-foreground lg:pb-2">
         <a
           href={new URL('/', SOURCE_URL).href}
           target="_blank"
@@ -46,6 +52,11 @@ export function Panel() {
         >
           {m.source_credit()}
         </a>
+        <span className="ml-auto" title={generatedAt}>
+          {m.updated({
+            time: formatRelative(new Date(generatedAt), getLocale(), now),
+          })}
+        </span>
       </footer>
     </Tabs>
   )

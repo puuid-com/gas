@@ -8,10 +8,12 @@ import type { MapPalette } from './palette'
 
 export const SOURCE_ID = 'stations'
 export const ROUTE_SOURCE_ID = 'route'
+export const TARGET_SOURCE_ID = 'target'
 export const INTERACTIVE_LAYERS = [
   'stations-circle',
   'stations-label',
   'stations-star',
+  'stations-pick',
 ]
 
 const FONT = ['Noto Sans Bold']
@@ -27,9 +29,16 @@ const priced = ['>=', tier, 0] as ExpressionSpecification
 /** Stations outside the chosen region or trip corridor are faded. */
 const focused = ['!', ['get', 'dim']] as ExpressionSpecification
 
-export function pillImageId(theme: string, t: number) {
+export function pillImageId(theme: string, t: number | 'pick') {
   return `pill-${theme}-${t}`
 }
+
+/** Drive mode's recommended station has its own layer; keep it out of these. */
+const notPick = (id: string | undefined): ExpressionSpecification => [
+  '!=',
+  ['get', 'id'],
+  id ?? '',
+]
 
 export function circleLayer(p: MapPalette): Circle {
   return {
@@ -86,12 +95,13 @@ export function labelLayer(
   p: MapPalette,
   theme: string,
   driving = false,
+  pickId?: string,
 ): Symbol {
   return {
     id: 'stations-label',
     type: 'symbol',
     minzoom: LABEL_MINZOOM,
-    filter: ['all', priced, ['!', ['get', 'star']], focused],
+    filter: ['all', priced, ['!', ['get', 'star']], focused, notPick(pickId)],
     layout: {
       'text-field': ['get', 'label'],
       'text-font': FONT,
@@ -113,11 +123,15 @@ export function labelLayer(
   }
 }
 
-export function starLayer(theme: string, driving = false): Symbol {
+export function starLayer(
+  theme: string,
+  driving = false,
+  pickId?: string,
+): Symbol {
   return {
     id: 'stations-star',
     type: 'symbol',
-    filter: ['all', ['get', 'star'], focused],
+    filter: ['all', ['get', 'star'], focused, notPick(pickId)],
     layout: {
       'text-field': ['concat', '★ ', ['get', 'label']],
       'text-font': FONT,
@@ -135,6 +149,37 @@ export function starLayer(theme: string, driving = false): Symbol {
       'symbol-z-order': 'source',
     },
     paint: { 'text-color': '#ffffff' },
+  }
+}
+
+/**
+ * Drive mode's answer to "where do I fill up": one inverted pill, larger than
+ * the rest and never hidden by a collision.
+ */
+export function pickLayer(
+  p: MapPalette,
+  theme: string,
+  id: string | undefined,
+): Symbol {
+  return {
+    id: 'stations-pick',
+    type: 'symbol',
+    filter: ['==', ['get', 'id'], id ?? ''],
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-font': FONT,
+      'text-size': 26,
+      'text-rotation-alignment': 'viewport',
+      'icon-rotation-alignment': 'viewport',
+      'text-anchor': 'bottom',
+      'text-offset': [0, -0.8],
+      'icon-image': pillImageId(theme, 'pick'),
+      'icon-text-fit': 'both',
+      'icon-text-fit-padding': [5, 10, 4, 10],
+      'text-allow-overlap': true,
+      'icon-allow-overlap': true,
+    },
+    paint: { 'text-color': p.halo },
   }
 }
 
@@ -185,4 +230,19 @@ export function routeLayers(p: MapPalette): [Line, Line] {
       },
     },
   ]
+}
+
+/** Dotted line from the car to the recommended station when no route leads there. */
+export function targetLayer(p: MapPalette): Line {
+  return {
+    id: 'target-line',
+    type: 'line',
+    layout: { 'line-cap': 'round' },
+    paint: {
+      'line-color': p.text,
+      'line-width': 3.5,
+      'line-dasharray': [0.1, 2.2],
+      'line-opacity': 0.75,
+    },
+  }
 }

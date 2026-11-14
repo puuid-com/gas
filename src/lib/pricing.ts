@@ -279,7 +279,7 @@ export function stopsAhead(along: AlongRoute, travelledKm: number) {
   )
 }
 
-/** How far down the road drive mode looks for the next station. */
+/** How far down the road drive mode can look for a station, at most. */
 export const AHEAD_RANGE_KM = 100
 
 export interface AheadStop {
@@ -336,6 +336,30 @@ export function stationsAheadOnRoute(
   return out.sort((a, b) => a.distanceKm - b.distanceKm)
 }
 
+/**
+ * Cents over the cheapest price ahead at which a station drops a tier. Unlike
+ * the regional ranks these are money, so green always means "as cheap as it
+ * gets from here" and red "about a dime a litre more".
+ */
+const GAP_TIERS_CENTS = [1, 3, 6, 10] as const
+
+export function tierForGap(cents: number): Tier {
+  const i = GAP_TIERS_CENTS.findIndex((limit) => cents <= limit)
+  return (i === -1 ? GAP_TIERS_CENTS.length : i) as Tier
+}
+
+export interface RatedStop extends AheadStop {
+  /** How much dearer than the cheapest station ahead, as a tier. */
+  tier: Tier
+}
+
+/** Colour the stations ahead against the cheapest of them. */
+export function rateAhead(stops: ReadonlyArray<AheadStop>): Array<RatedStop> {
+  let min = Infinity
+  for (const s of stops) min = Math.min(min, s.price)
+  return stops.map((s) => ({ ...s, tier: tierForGap(s.price - min) }))
+}
+
 /** Stretch of road ahead, coloured by the best price on it. */
 export interface RoadBlock {
   fromKm: number
@@ -362,14 +386,62 @@ export function roadBlocks(
   return blocks
 }
 
-/** Smallest saving worth suggesting a farther station for, in cents. */
+/** Smallest saving worth driving past the next station for, in cents. */
 const WORTH_CENTS = 2
+/** A nearer station this close to the lowest price is as good as the lowest. */
+const NEAR_ENOUGH_CENTS = 1
 
-/** The cheapest station farther ahead, if it beats the next one enough. */
-export function cheaperAhead<T extends AheadStop>(stops: ReadonlyArray<T>) {
+export interface StopDecision<T extends AheadStop = AheadStop> {
+  /** `stop`: fill up at the next station. `go`: drive on to `pick`. */
+  verdict: 'stop' | 'go'
+  /** The nearest station ahead: what stopping right now costs. */
+  next: T
+  /** Where to fill up: `next` when stopping, else the station worth reaching. */
+  pick: T
+  /**
+   * The road not taken: `next` when driving on, else the best station past
+   * `next` (null when it is the only one ahead).
+   */
+  other: T | null
+  /**
+   * Cents per litre `pick` saves over `other`. Slightly negative when stopping
+   * short of a station too marginally cheaper to be worth the wait.
+   */
+  saving: number
+}
+
+/**
+ * "Do I stop now or keep going?" for stations ahead, nearest first. Driving on
+ * has to save at least `WORTH_CENTS`, and of the stations that cheap the
+ * closest wins, so nobody is sent 40 km for a tenth of a cent.
+ */
+export function decideStop<T extends AheadStop>(
+  stops: ReadonlyArray<T>,
+): StopDecision<T> | null {
   if (stops.length === 0) return null
   const [next, ...rest] = stops
-  let best: T | null = null
-  for (const s of rest) if (!best || s.price < best.price) best = s
-  return best && next.price - best.price >= WORTH_CENTS ? best : null
+  const nearestWithin = (pool: ReadonlyArray<T>) => {
+    let min = Infinity
+    for (const s of pool) min = Math.min(min, s.price)
+    return pool.find((s) => s.price <= min + NEAR_ENOUGH_CENTS) ?? null
+  }
+
+  const best = nearestWithin(stops)!
+  if (best !== next && next.price - best.price >= WORTH_CENTS) {
+    return {
+      verdict: 'go',
+      next,
+      pick: best,
+      other: next,
+      saving: next.price - best.price,
+    }
+  }
+  const other = nearestWithin(rest)
+  return {
+    verdict: 'stop',
+    next,
+    pick: next,
+    other,
+    saving: other ? other.price - next.price : 0,
+  }
 }

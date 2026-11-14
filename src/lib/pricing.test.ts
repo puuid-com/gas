@@ -5,12 +5,14 @@ import {
   cheapestNear,
   computeFuelStats,
   median,
-  cheaperAhead,
+  decideStop,
+  rateAhead,
   roadBlocks,
   stationsAheadByHeading,
   stationsAlongRoute,
   stopsAhead,
   tierFor,
+  tierForGap,
 } from './pricing'
 import type { Station } from './stations'
 
@@ -208,6 +210,12 @@ describe('stationsAheadByHeading', () => {
   })
 })
 
+const at = (price: number, distanceKm: number) => ({
+  station: station('R', price),
+  price,
+  distanceKm,
+})
+
 describe('roadBlocks', () => {
   it('colours each 10 km stretch by its cheapest tier', () => {
     const blocks = roadBlocks([
@@ -222,15 +230,46 @@ describe('roadBlocks', () => {
   })
 })
 
-describe('cheaperAhead', () => {
-  const at = (price: number, distanceKm: number) => ({
-    station: station('R', price),
-    price,
-    distanceKm,
+describe('rateAhead', () => {
+  it('tiers each station by its gap to the cheapest ahead', () => {
+    expect([0, 1, 1.1, 3, 6, 10, 10.1].map(tierForGap)).toEqual([
+      0, 0, 1, 1, 2, 3, 4,
+    ])
+    const rated = rateAhead([at(160, 1), at(150, 5), at(152.5, 9)])
+    expect(rated.map((s) => s.tier)).toEqual([3, 0, 1])
+  })
+})
+
+describe('decideStop', () => {
+  it('has nothing to say without stations ahead', () => {
+    expect(decideStop([])).toBeNull()
   })
 
-  it('suggests a farther station only when it saves enough', () => {
-    expect(cheaperAhead([at(170, 1), at(169, 5)])).toBeNull()
-    expect(cheaperAhead([at(170, 1), at(165, 9), at(163, 20)])?.price).toBe(163)
+  it('stops at the next station when driving on saves too little', () => {
+    const decision = decideStop([at(170, 1), at(169, 5), at(172, 9)])!
+    expect(decision.verdict).toBe('stop')
+    expect(decision.pick.price).toBe(170)
+    // Skipping it means paying the best price past it.
+    expect(decision.other?.price).toBe(169)
+    expect(decision.saving).toBe(-1)
+  })
+
+  it('drives on when a station ahead saves enough', () => {
+    const decision = decideStop([at(170, 1), at(165, 9), at(163, 20)])!
+    expect(decision.verdict).toBe('go')
+    expect(decision.pick.price).toBe(163)
+    expect(decision.other?.price).toBe(170)
+    expect(decision.saving).toBe(7)
+  })
+
+  it('prefers the nearest of the stations about as cheap as the best', () => {
+    const decision = decideStop([at(170, 1), at(163.9, 9), at(163, 40)])!
+    expect(decision.pick.distanceKm).toBe(9)
+  })
+
+  it('stops at the only station in range', () => {
+    const decision = decideStop([at(170, 3)])!
+    expect(decision.verdict).toBe('stop')
+    expect(decision.other).toBeNull()
   })
 })

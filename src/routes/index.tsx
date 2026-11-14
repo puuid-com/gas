@@ -5,9 +5,8 @@ import { MapProvider } from 'react-map-gl/maplibre'
 import { IconRefresh } from '@tabler/icons-react'
 import { z } from 'zod'
 
-import { AppHeader, Logo } from '#/components/AppHeader'
+import { Logo } from '#/components/AppHeader'
 import { MapChrome } from '#/components/MapChrome'
-import { Panel } from '#/components/Panel'
 import { StationMap } from '#/components/map/StationMap'
 import { Button } from '#/components/ui/button'
 import { Skeleton } from '#/components/ui/skeleton'
@@ -18,7 +17,7 @@ import { cn } from '#/lib/utils'
 import { useTripStart } from '#/hooks/use-trip'
 import { useWakeLock } from '#/hooks/use-wake-lock'
 import { initLocation, locationStore } from '#/stores/location'
-import { mapStore } from '#/stores/map'
+import { mapStore, panelInset } from '#/stores/map'
 import { initTrip } from '#/stores/trip'
 import { m } from '#/paraglide/messages'
 
@@ -71,8 +70,8 @@ export const Route = createFileRoute('/')({
 })
 
 function App() {
-  const { view } = Route.useSearch()
   const insetBottom = useSelector(mapStore, (s) => s.insets.bottom)
+  const panelOpen = useSelector(mapStore, (s) => s.panelOpen)
   const driving = useSelector(locationStore, (s) => s.driving)
   useWakeLock(driving)
   useTripStart()
@@ -83,49 +82,52 @@ function App() {
 
   return (
     <MapProvider>
-      <div className="relative flex h-dvh w-full overflow-hidden">
-        <aside
-          className={cn(
-            'absolute inset-0 z-20 flex-col bg-background lg:static lg:z-auto lg:w-[400px] lg:shrink-0 lg:border-r',
-            view === 'list' ? 'flex' : 'hidden lg:flex',
-          )}
-        >
-          <AppHeader className="border-b p-3 pt-[max(env(safe-area-inset-top),0.75rem)]" />
-          <Panel />
-        </aside>
-        <main
-          className="relative min-w-0 flex-1"
-          style={
-            { '--inset-bottom': `${insetBottom}px` } as React.CSSProperties
-          }
-        >
-          <StationMap />
-          <MapChrome />
-        </main>
-      </div>
+      {/* The map is the page; everything else floats over it. */}
+      <main
+        className="relative h-dvh w-full overflow-hidden"
+        style={
+          {
+            '--inset-bottom': `${insetBottom}px`,
+            '--inset-left': `${panelInset(panelOpen)}px`,
+          } as React.CSSProperties
+        }
+      >
+        <StationMap />
+        <MapChrome />
+      </main>
     </MapProvider>
   )
 }
 
-/** Mirrors the real layout (sidebar, map, floating chrome) so nothing jumps on load. */
+/** Mirrors the real layout (map, floating chrome) so nothing jumps on load. */
 function LoadingScreen() {
+  const floating = 'border bg-background shadow-lg shadow-black/10'
   return (
-    <div
-      className="relative flex h-dvh w-full overflow-hidden"
+    <main
+      className="relative flex h-dvh w-full flex-col gap-2 overflow-hidden bg-muted/60 p-3 pt-[max(env(safe-area-inset-top),0.75rem)] pb-[max(env(safe-area-inset-bottom),0.75rem)] lg:p-4"
       aria-busy="true"
     >
-      <aside className="hidden w-[400px] shrink-0 flex-col border-r bg-background lg:flex">
-        <div className="flex flex-col gap-2 border-b p-3">
-          <div className="flex h-8 items-center gap-2">
-            <Logo />
-            <span className="text-[15px] font-semibold tracking-tight">
-              {m.app_name()}
-            </span>
-            <Skeleton className="h-3 w-24" />
-          </div>
-          <Skeleton className="h-9 w-full" />
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
+        <div
+          className={cn(
+            'flex h-12 items-center gap-3 px-3 lg:w-[400px] lg:shrink-0',
+            floating,
+          )}
+        >
+          <Logo />
+          <Skeleton className="h-3 w-40" />
         </div>
+        <Skeleton className={cn('h-9 w-56', floating)} />
+      </div>
+
+      <div
+        className={cn(
+          'hidden w-[400px] flex-col lg:absolute lg:top-[4.75rem] lg:bottom-4 lg:left-4 lg:flex',
+          floating,
+        )}
+      >
         <div className="flex h-9 items-center gap-4 border-b px-3">
+          <Skeleton className="h-3 w-14" />
           <Skeleton className="h-3 w-14" />
           <Skeleton className="h-3 w-14" />
         </div>
@@ -134,33 +136,28 @@ function LoadingScreen() {
             <RowSkeleton key={i} className="px-3" />
           ))}
         </div>
-      </aside>
+      </div>
 
-      <main className="relative min-w-0 flex-1 bg-muted/60">
-        <div className="absolute inset-0 flex flex-col p-3 pt-[max(env(safe-area-inset-top),0.75rem)] pb-[max(env(safe-area-inset-bottom),0.75rem)] lg:p-4">
-          <div className="flex flex-col items-start gap-2 lg:hidden">
-            <div className="flex h-12 w-full items-center gap-3 border bg-background px-3 shadow-lg shadow-black/10">
-              <Logo />
-              <Skeleton className="h-3 w-40" />
-            </div>
-            <Skeleton className="h-8 w-56 border bg-background shadow-md shadow-black/10" />
-          </div>
+      <div
+        className={cn('mt-auto size-11 self-end lg:size-10', floating)}
+      />
 
-          <div className="mt-auto mb-2 size-11 self-end border bg-background shadow-lg" />
-
-          <div className="w-full border bg-background pb-2 shadow-xl shadow-black/10 lg:absolute lg:top-4 lg:right-4 lg:w-96">
-            <div className="flex h-5 items-end justify-center lg:hidden">
-              <span className="h-1 w-9 rounded-full bg-muted-foreground/40" />
-            </div>
-            <div className="flex items-center gap-2 px-4 pt-3">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="ml-auto h-8 w-24" />
-            </div>
-            <RowSkeleton className="px-4" />
-          </div>
+      <div
+        className={cn(
+          'w-full pb-2 lg:absolute lg:top-[4.75rem] lg:right-4 lg:w-96',
+          floating,
+        )}
+      >
+        <div className="flex h-6 items-center justify-center lg:hidden">
+          <span className="h-1 w-9 rounded-full bg-muted-foreground/40" />
         </div>
-      </main>
-    </div>
+        <div className="flex items-center gap-2 px-4 pt-1 lg:pt-3">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="ml-auto h-11 w-24" />
+        </div>
+        <RowSkeleton className="px-4" />
+      </div>
+    </main>
   )
 }
 

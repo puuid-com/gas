@@ -20,8 +20,6 @@ interface StationRowProps {
   subtitle?: React.ReactNode
   /** Replaces the distance under the price. */
   meta?: React.ReactNode
-  ahead?: boolean
-  size?: 'default' | 'lg'
   onSelect: (id: string) => void
   className?: string
 }
@@ -34,13 +32,10 @@ export function StationRow({
   distanceKm,
   subtitle,
   meta,
-  ahead,
-  size = 'default',
   onSelect,
   className,
 }: StationRowProps) {
   const locale = getLocale()
-  const lg = size === 'lg'
 
   return (
     <Button
@@ -48,55 +43,31 @@ export function StationRow({
       type="button"
       onClick={() => onSelect(station.id)}
       className={cn(
-        'flex h-auto w-full items-center justify-start gap-3 border-0 px-3 text-left whitespace-normal transition-colors outline-none hover:bg-muted/70 focus-visible:bg-muted',
-        lg ? 'py-3' : 'py-2.5',
+        'flex h-auto w-full items-center justify-start gap-3 border-0 px-3 py-2.5 text-left whitespace-normal transition-colors outline-none hover:bg-muted/70 focus-visible:bg-muted',
         className,
       )}
     >
       <TierBar tier={tier} />
       <div className="min-w-0 flex-1">
-        <div
-          className={cn(
-            'flex items-center gap-1.5 font-medium',
-            lg ? 'text-base' : 'text-sm',
-          )}
-        >
+        <div className="flex items-center gap-1.5 text-sm font-medium">
           <span className="truncate">{stationTitle(station)}</span>
           {star && <RegionStar />}
         </div>
-        <div
-          className={cn(
-            'flex items-center gap-1.5 truncate text-muted-foreground',
-            lg ? 'text-sm' : 'text-xs',
-          )}
-        >
-          {ahead && (
-            <span className="font-medium text-foreground uppercase tracking-wide">
-              {m.ahead()}
-            </span>
-          )}
-          <span className="truncate">
-            {subtitle ?? (station.city || station.address)}
-          </span>
+        <div className="truncate text-xs text-muted-foreground">
+          {subtitle ?? (station.city || station.address)}
         </div>
       </div>
       <div className="shrink-0 text-right">
         <div
           className={cn(
-            'leading-none font-semibold tabular-nums tracking-tight',
-            lg ? 'text-[2.75rem] font-bold' : 'text-xl',
+            'text-xl leading-none font-semibold tracking-tight tabular-nums',
             price == null && 'text-sm font-normal text-muted-foreground',
           )}
         >
           {price == null ? m.unavailable() : formatPrice(price, locale)}
         </div>
         {(meta != null || distanceKm != null) && (
-          <div
-            className={cn(
-              'mt-1 tabular-nums',
-              lg ? 'text-base font-medium' : 'text-xs text-muted-foreground',
-            )}
-          >
+          <div className="mt-1 text-xs text-muted-foreground tabular-nums">
             {meta ?? formatDistance(distanceKm!, locale)}
           </div>
         )}

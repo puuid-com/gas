@@ -3,6 +3,7 @@ import { useSelector } from '@tanstack/react-store'
 import { Button } from '#/components/ui/button'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuItem,
@@ -18,6 +19,7 @@ import type { Fuel } from '#/lib/stations'
 import { useNow } from '#/hooks/use-now'
 import { useStations } from '#/hooks/use-stations'
 import { formatRelative } from '#/lib/format'
+import { prefsStore, setCostco } from '#/stores/prefs'
 import { setThemePreference, themeStore } from '#/stores/theme'
 import { getLocale, setLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
@@ -28,21 +30,34 @@ const LANGUAGES = [
   { locale: 'en', label: 'English' },
 ] as const
 
-export function AppMenu({ onPlanTrip }: { onPlanTrip?: () => void }) {
+export function AppMenu({
+  onPlanTrip,
+  className,
+}: {
+  onPlanTrip?: () => void
+  /** Sizes the trigger to the bar it sits in. */
+  className?: string
+}) {
   const { fuel } = useAppSearch()
   const setSearch = useSetSearch()
   const preference = useSelector(themeStore, (s) => s.preference)
+  const costco = useSelector(prefsStore, (s) => s.costco)
   const { generatedAt } = useStations()
   const now = useNow()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={m.menu()}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={className}
+          aria-label={m.menu()}
+        >
           <IconDots />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>{m.fuel_label()}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={fuel}
@@ -54,6 +69,13 @@ export function AppMenu({ onPlanTrip }: { onPlanTrip?: () => void }) {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={costco}
+          onCheckedChange={(checked) => setCostco(checked === true)}
+        >
+          {m.costco_member()}
+        </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         {onPlanTrip && (
           <>

@@ -56,7 +56,7 @@ export function StationDetail({
             {stationTitle(station)}
           </h2>
           <p className="text-sm text-muted-foreground break-words">
-            {[station.address, station.city].filter(Boolean).join(', ')}
+            {station.address}
           </p>
         </div>
         <Button

@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Map, { AttributionControl, Layer, Source } from 'react-map-gl/maplibre'
+import Map, {
+  AttributionControl,
+  Layer,
+  Marker,
+  ScaleControl,
+  Source,
+} from 'react-map-gl/maplibre'
+import { IconMapPinFilled } from '@tabler/icons-react'
 import { useSelector } from '@tanstack/react-store'
 import type { MapLayerMouseEvent, MapRef } from 'react-map-gl/maplibre'
 import * as maplibregl from 'maplibre-gl'
@@ -8,27 +15,38 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson'
 
 import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
+import { useDriveAhead } from '#/hooks/use-drive'
 import { getFuelStats, useStations } from '#/hooks/use-stations'
 import { useTrip, useTripProgress } from '#/hooks/use-trip'
 import { formatPrice } from '#/lib/format'
+import { angleDiff, bearingDeg, distanceKm } from '#/lib/geo'
 import { mapPadding, mapStore } from '#/stores/map'
 import { locationStore, setFollow } from '#/stores/location'
 import { themeStore } from '#/stores/theme'
 import { getLocale } from '#/paraglide/runtime'
-import type { Bounds } from '#/lib/geo'
-import { TIERS, stopsAhead } from '#/lib/pricing'
+import type { Bounds, LngLat } from '#/lib/geo'
+import {
+  TIERS,
+  rateAhead,
+  stationsAheadByHeading,
+  stopsAhead,
+} from '#/lib/pricing'
 import type { Tier } from '#/lib/pricing'
+import type { Fix } from '#/stores/location'
 
 import {
   INTERACTIVE_LAYERS,
   ROUTE_SOURCE_ID,
   SOURCE_ID,
+  TARGET_SOURCE_ID,
   circleLayer,
   labelLayer,
+  pickLayer,
   pillImageId,
   routeLayers,
   selectedLayer,
   starLayer,
+  targetLayer,
 } from './layers'
 import { drawPill, readPalette } from './palette'
 import { styleHighways } from './highways'
@@ -46,6 +64,62 @@ const INITIAL_BOUNDS: Bounds = [
 ]
 
 export const MAP_ID = 'main'
+
+/** Drive mode tilts the map so more of the road ahead fits on screen. */
+const DRIVE_PITCH = 45
+const DRIVE_ZOOM = { min: 9.5, max: 15.5, idle: 13 }
+
+type Padding = ReturnType<typeof mapPadding>
+
+/** Looking ahead matters more than behind: keep the car low in the frame. */
+function drivePadding(height: number): Padding {
+  const base = mapPadding()
+  const free = Math.max(0, height - base.top - base.bottom)
+  return { ...base, top: base.top + free / 2 }
+}
+
+/**
+ * The closest zoom that still shows both the car and `target`, so the map
+ * always answers "where is it" without a pinch. Stepped, so it doesn't creep.
+ */
+function driveZoom(
+  { clientWidth: width, clientHeight: height }: HTMLElement,
+  fix: Fix,
+  target: LngLat | null,
+) {
+  if (!target) return DRIVE_ZOOM.idle
+  const pad = drivePadding(height)
+  const carY = pad.top + (height - pad.top - pad.bottom) / 2
+  // Room around the car, less what a price pill needs to stay on screen.
+  const ahead = Math.max(60, carY - mapPadding().top - 64)
+  const behind = Math.max(60, height - pad.bottom - carY)
+  const side = Math.max(60, (width - pad.left - pad.right) / 2 - 40)
+
+  const metres = distanceKm(fix, target) * 1000
+  let metresPerPx: number
+  if (fix.heading == null) {
+    // North-up: the station could be anywhere around the car.
+    metresPerPx = metres / Math.min(ahead, behind, side)
+  } else {
+    const off = (angleDiff(fix.heading, bearingDeg(fix, target)) * Math.PI) / 180
+    metresPerPx = Math.max(
+      (metres * Math.cos(off)) / ahead,
+      (metres * -Math.cos(off)) / behind,
+      (metres * Math.sin(off)) / side,
+    )
+  }
+  // MapLibre's zoom 0 fits the world in 512 px.
+  const zoom = Math.log2(
+    (78271.517 * Math.cos((fix.lat * Math.PI) / 180)) /
+      Math.max(metresPerPx, 0.01),
+  )
+  return Math.min(
+    DRIVE_ZOOM.max,
+    Math.max(DRIVE_ZOOM.min, Math.floor(zoom * 4) / 4),
+  )
+}
+
+const linear = (t: number) => t
 
 // MapLibre resolves its worker relative to its own module, which breaks once
 // Vite pre-bundles it; point it at the emitted asset instead.
@@ -77,6 +151,10 @@ export function StationMap() {
   const fix = useSelector(locationStore, (s) => s.fix)
   const driving = useSelector(locationStore, (s) => s.driving)
   const follow = useSelector(locationStore, (s) => s.follow)
+  const aheadKm = useSelector(locationStore, (s) => s.aheadKm)
+  const place = useSelector(mapStore, (s) => s.place)
+  // The card resizing (collapsed, expanded, a station opened) moves the car.
+  const insetBottom = useSelector(mapStore, (s) => s.insets.bottom)
   const followingRef = useRef(false)
 
   // CSS tokens change with the theme class; re-read them when it flips.
@@ -97,6 +175,33 @@ export function StationMap() {
     [along, passedKm],
   )
 
+  // Drive mode's recommended station: its own pin, and the camera frames it.
+  const pick = useDriveAhead(trip)?.decision?.pick.station ?? null
+  const pickLng = pick?.lng
+  const pickLat = pick?.lat
+
+  // Driving without a trip, colour only what's ahead, against each other.
+  // A coarse position and course keep the pins from flickering on every fix.
+  const spot = driving && !along ? fix : null
+  const cellLat = spot ? Math.round(spot.lat * 400) / 400 : null
+  const cellLng = spot ? Math.round(spot.lng * 280) / 280 : null
+  const cellHeading =
+    spot?.heading == null ? null : (Math.round(spot.heading / 15) * 15) % 360
+  const driveTiers = useMemo(() => {
+    if (cellLat == null || cellLng == null) return null
+    const pool = region ? stations.filter((s) => s.region === region) : stations
+    const stops = stationsAheadByHeading(
+      pool,
+      fuel,
+      { lat: cellLat, lng: cellLng },
+      cellHeading,
+      aheadKm,
+    )
+    return new globalThis.Map(
+      rateAhead(stops).map((s) => [s.station.id, s.tier]),
+    )
+  }, [cellLat, cellLng, cellHeading, stations, fuel, region, aheadKm])
+
   const data = useMemo<FeatureCollection<Point, StationProps>>(() => {
     return {
       type: 'FeatureCollection',
@@ -113,18 +218,26 @@ export function StationMap() {
             region: s.region,
             price: price ?? 9999,
             label: price == null ? '' : formatPrice(price, locale),
-            tier: along ? (routeTier ?? -1) : (rank?.tier ?? -1),
+            tier: along
+              ? (routeTier ?? -1)
+              : driveTiers
+                ? (driveTiers.get(s.id) ?? -1)
+                : (rank?.tier ?? -1),
             star: along
               ? along.cheapestIds.has(s.id)
-              : (rank?.regionCheapest ?? false),
+              : driveTiers
+                ? driveTiers.get(s.id) === 0
+                : (rank?.regionCheapest ?? false),
             dim: along
               ? routeTier == null || (ahead ? !ahead.has(s.id) : false)
-              : region != null && s.region !== region,
+              : driveTiers
+                ? !driveTiers.has(s.id)
+                : region != null && s.region !== region,
           },
         }
       }),
     }
-  }, [stations, fuel, stats, locale, along, ahead, region])
+  }, [stations, fuel, stats, locale, along, ahead, driveTiers, region])
 
   const routeData = useMemo<Feature<LineString> | null>(
     () =>
@@ -139,11 +252,29 @@ export function StationMap() {
     [line],
   )
 
+  // No route to follow: point from the car straight at the recommended station.
+  const targetData =
+    driving && fix && !line && pickLng != null && pickLat != null
+      ? ({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [fix.lng, fix.lat],
+              [pickLng, pickLat],
+            ],
+          },
+          properties: {},
+        } satisfies Feature<LineString>)
+      : null
+
   // Fly to a station picked outside the map (list, nearby card, deep link).
   useEffect(() => {
     const map = mapRef.current
     const target = station ? byId.get(station) : undefined
     if (!loaded || !map || !target || clickedRef.current === station) return
+    // Drive mode's camera stays on the car; the card shows the station.
+    if (locationStore.state.driving && locationStore.state.follow) return
     map.flyTo({
       center: [target.lng, target.lat],
       zoom: Math.max(map.getZoom(), 13),
@@ -172,28 +303,49 @@ export function StationMap() {
     })
   }, [loaded, line])
 
-  // Drive mode: keep the user in frame, heading-up once they're moving.
+  // Drive mode: heading-up and tilted once moving, the car low in the frame,
+  // zoomed so the recommended station is in view.
   useEffect(() => {
     const map = mapRef.current
     const tracking = loaded && driving && follow && fix != null
     const started = tracking && !followingRef.current
     followingRef.current = tracking
     if (!map || !tracking) return
+    const target =
+      pickLng != null && pickLat != null ? { lng: pickLng, lat: pickLat } : null
+    const container = map.getContainer()
     map.easeTo({
       center: [fix.lng, fix.lat],
-      zoom: started ? Math.max(map.getZoom(), 14) : undefined,
+      zoom: driveZoom(container, fix, target),
       bearing: fix.heading ?? map.getBearing(),
-      padding: mapPadding(),
-      duration: started ? 1200 : 900,
+      pitch: fix.heading == null ? 0 : DRIVE_PITCH,
+      padding: drivePadding(container.clientHeight),
       essential: true,
+      // Fixes come about once a second: glide between them rather than lurch.
+      ...(started ? { duration: 1200 } : { duration: 1000, easing: linear }),
     })
-  }, [loaded, driving, follow, fix])
+  }, [loaded, driving, follow, fix, pickLng, pickLat, insetBottom])
 
-  // Back to north-up when leaving drive mode.
+  // The credit stays behind its (i) while driving; the road needs the room.
+  useEffect(() => {
+    if (!loaded || !driving) return
+    const credit = mapRef.current
+      ?.getContainer()
+      .querySelector('.maplibregl-ctrl-attrib')
+    credit?.classList.remove('maplibregl-compact-show')
+    credit?.removeAttribute('open')
+  }, [loaded, driving])
+
+  // Back to a flat, north-up map when leaving drive mode.
   useEffect(() => {
     const map = mapRef.current
-    if (loaded && map && !driving && map.getBearing() !== 0) {
-      map.easeTo({ bearing: 0, duration: 600 })
+    if (
+      loaded &&
+      map &&
+      !driving &&
+      (map.getBearing() !== 0 || map.getPitch() !== 0)
+    ) {
+      map.easeTo({ bearing: 0, pitch: 0, duration: 600 })
     }
   }, [loaded, driving])
 
@@ -216,10 +368,15 @@ export function StationMap() {
     setSearch({ station: id })
   }
 
+  // A pinch or wheel zoom is the driver taking over, like a drag.
+  const onZoomStart = (e: { originalEvent?: unknown }) => {
+    if (e.originalEvent) setFollow(false)
+  }
+
   const addPills = (map: MapLibreMap) => {
     const current = themeStore.state.resolved
     const colors = readPalette()
-    for (const t of TIERS) {
+    for (const t of [...TIERS, 'pick' as const]) {
       const id = pillImageId(current, t)
       if (map.hasImage(id)) continue
       const pill = drawPill(t, colors)
@@ -239,7 +396,7 @@ export function StationMap() {
         fitBoundsOptions: {
           padding: matchMedia('(min-width: 1024px)').matches
             ? mapPadding()
-            : { top: 140, bottom: 300, left: 16, right: 16 },
+            : { top: 150, bottom: 190, left: 16, right: 16 },
         },
       }}
       mapStyle={STYLES[theme]}
@@ -268,16 +425,28 @@ export function StationMap() {
       }}
       onMoveEnd={syncView}
       onDragStart={() => setFollow(false)}
+      onZoomStart={onZoomStart}
     >
       <AttributionControl compact position="bottom-left" />
+      <ScaleControl position="bottom-left" unit="metric" maxWidth={96} />
       <Source id={SOURCE_ID} type="geojson" data={data}>
         <Layer {...circleLayer(palette)} />
         <Layer {...selectedLayer(palette, station)} />
         {pillsFor === theme && (
-          <Layer {...labelLayer(palette, theme, driving)} />
+          <Layer {...labelLayer(palette, theme, driving, pick?.id)} />
         )}
-        {pillsFor === theme && <Layer {...starLayer(theme, driving)} />}
+        {pillsFor === theme && (
+          <Layer {...starLayer(theme, driving, pick?.id)} />
+        )}
+        {pillsFor === theme && (
+          <Layer {...pickLayer(palette, theme, pick?.id)} />
+        )}
       </Source>
+      {targetData && (
+        <Source id={TARGET_SOURCE_ID} type="geojson" data={targetData}>
+          <Layer {...targetLayer(palette)} beforeId="stations-circle" />
+        </Source>
+      )}
       {routeData && (
         // Declared after the stations so they exist to slot under on re-add.
         <Source id={ROUTE_SOURCE_ID} type="geojson" data={routeData}>
@@ -286,7 +455,15 @@ export function StationMap() {
           ))}
         </Source>
       )}
-      {fix && <UserMarker fix={fix} />}
+      {place && (
+        <Marker longitude={place.lng} latitude={place.lat} anchor="bottom">
+          <IconMapPinFilled
+            aria-label={place.name}
+            className="size-9 text-foreground drop-shadow-[0_1px_2px_rgb(0_0_0/0.4)]"
+          />
+        </Marker>
+      )}
+      {fix && <UserMarker fix={fix} driving={driving} />}
     </Map>
   )
 }

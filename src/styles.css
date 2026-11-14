@@ -148,8 +148,27 @@
   color: #d4d4d4;
 }
 
-/* Keep map controls clear of the bottom sheet. */
+.maplibregl-ctrl-scale {
+  border-color: var(--muted-foreground);
+  background: color-mix(in oklab, var(--background) 70%, transparent);
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 10px;
+}
+
+/* Keep map controls clear of the bottom sheet, and of the list on wide screens. */
 .maplibregl-ctrl-bottom-left,
 .maplibregl-ctrl-bottom-right {
   bottom: var(--inset-bottom, 0px);
+}
+@media (width >= 64rem) {
+  .maplibregl-ctrl-bottom-left {
+    left: var(--inset-left, 0px);
+  }
+}
+/* A scale bar is noise on a phone, where the sheet already crowds the map. */
+@media (width < 64rem) {
+  .maplibregl-ctrl-scale {
+    display: none;
+  }
 }
