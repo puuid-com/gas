@@ -1,4 +1,4 @@
-import { IconNavigation, IconX } from '@tabler/icons-react'
+import { IconX } from '@tabler/icons-react'
 import { DirectionsButton } from '#/components/DirectionsButton'
 import { RegionStar, TierBar } from '#/components/TierMark'
 import { Button } from '#/components/ui/button'
@@ -8,7 +8,6 @@ import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
 import { useTrip } from '#/hooks/use-trip'
 import { useFuelStats, useStations } from '#/hooks/use-stations'
 import { formatCents, formatPrice } from '#/lib/format'
-import { directionsUrl, navAppLabel, preferredNavApp } from '#/lib/directions'
 import { distanceKm, formatDistance } from '#/lib/geo'
 import { locationStore } from '#/stores/location'
 import { fuelLabel, stationSubtitle, stationTitle } from '#/lib/i18n'
@@ -44,7 +43,6 @@ export function StationDetail({
   const subtitle = stationSubtitle(station)
   const delta = price != null && region ? price - region.median : null
 
-  const navApp = preferredNavApp()
   const compactDetail = (
     <section
       aria-label={stationTitle(station)}
@@ -95,20 +93,11 @@ export function StationDetail({
           </p>
         </div>
       </div>
-      <Button asChild className="h-16 w-full gap-3 text-base sm:text-lg">
-        <a
-          href={directionsUrl(
-            navApp,
-            station,
-            stop ? (trip.destination ?? undefined) : undefined,
-          )}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <IconNavigation className="size-5" />
-          {m.directions()} · {navAppLabel(navApp, locale)}
-        </a>
-      </Button>
+      <DirectionsButton
+        to={station}
+        then={stop ? (trip.destination ?? undefined) : undefined}
+        size="xl"
+      />
     </section>
   )
 

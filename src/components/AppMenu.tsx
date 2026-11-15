@@ -13,16 +13,18 @@ import {
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
 import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
+import { NAV_APPS, navAppLabel } from '#/lib/directions'
 import { fuelLabel } from '#/lib/i18n'
 import { FUELS } from '#/lib/stations'
 import type { Fuel } from '#/lib/stations'
 import { useNow } from '#/hooks/use-now'
 import { useStations } from '#/hooks/use-stations'
 import { formatRelative } from '#/lib/format'
-import { prefsStore, setCostco } from '#/stores/prefs'
+import { prefsStore, setCostco, setNavApp } from '#/stores/prefs'
 import { setThemePreference, themeStore } from '#/stores/theme'
 import { getLocale, setLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
+import type { NavApp } from '#/lib/directions'
 import type { ThemePreference } from '#/stores/theme'
 
 const LANGUAGES = [
@@ -42,6 +44,7 @@ export function AppMenu({
   const setSearch = useSetSearch()
   const preference = useSelector(themeStore, (s) => s.preference)
   const costco = useSelector(prefsStore, (s) => s.costco)
+  const navApp = useSelector(prefsStore, (s) => s.navApp)
   const { generatedAt } = useStations()
   const now = useNow()
 
@@ -85,6 +88,18 @@ export function AppMenu({
             <DropdownMenuSeparator />
           </>
         )}
+        <DropdownMenuLabel>{m.directions_app()}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={navApp}
+          onValueChange={(value) => setNavApp(value as NavApp)}
+        >
+          {NAV_APPS.map((app) => (
+            <DropdownMenuRadioItem key={app} value={app}>
+              {navAppLabel(app, getLocale())}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuLabel>{m.language_label()}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={getLocale()}

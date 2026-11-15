@@ -1,26 +1,23 @@
-import { useState } from 'react'
-import { IconChevronDown, IconNavigation } from '@tabler/icons-react'
+import { useSelector } from '@tanstack/react-store'
+import { IconNavigation } from '@tabler/icons-react'
 import { Button } from '#/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '#/components/ui/dropdown-menu'
-import {
-  NAV_APPS,
-  directionsUrl,
-  navAppLabel,
-  preferredNavApp,
-  rememberNavApp,
-  supportsStops,
-} from '#/lib/directions'
+import { directionsUrl, navAppLabel, supportsStops } from '#/lib/directions'
 import { cn } from '#/lib/utils'
+import { prefsStore } from '#/stores/prefs'
 import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
-import type { NavApp } from '#/lib/directions'
 import type { LngLat } from '#/lib/geo'
 
+const SIZES = {
+  default: { button: 'h-10 text-[13px]', icon: 'size-4' },
+  lg: { button: 'h-14 gap-2.5 text-base', icon: 'size-5' },
+  xl: { button: 'h-16 gap-3 text-lg', icon: 'size-6' },
+}
+
+/**
+ * One tap hands the station to the navigation app: Waze, unless another one
+ * was chosen in the menu.
+ */
 export function DirectionsButton({
   to,
   then,
@@ -30,44 +27,25 @@ export function DirectionsButton({
   to: LngLat
   /** On a trip: stop at `to` on the way here, where the app allows it. */
   then?: LngLat
-  size?: 'default' | 'lg'
+  size?: keyof typeof SIZES
   className?: string
 }) {
-  const [app, setApp] = useState<NavApp>(preferredNavApp)
-  const locale = getLocale()
-  const height = size === 'lg' ? 'h-12 text-sm' : 'h-10 text-[13px]'
-
-  const open = (choice: NavApp) => {
-    rememberNavApp(choice)
-    setApp(choice)
-    window.open(directionsUrl(choice, to, then), '_blank', 'noopener')
-  }
+  const app = useSelector(prefsStore, (s) => s.navApp)
   const asStop = then != null && supportsStops(app)
 
   return (
-    <div className={cn('flex', className)}>
-      <Button className={cn('flex-1', height)} onClick={() => open(app)}>
-        <IconNavigation />
+    <Button asChild className={cn('w-full', SIZES[size].button, className)}>
+      <a
+        href={directionsUrl(app, to, then)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <IconNavigation className={SIZES[size].icon} />
         {asStop ? m.directions_stop() : m.directions()}
-        <span className="font-normal opacity-60">· {navAppLabel(app, locale)}</span>
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            className={cn('border-l border-l-background/20 px-3', height)}
-            aria-label={m.open_in({ app: '…' })}
-          >
-            <IconChevronDown />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {NAV_APPS.map((choice) => (
-            <DropdownMenuItem key={choice} onSelect={() => open(choice)}>
-              {m.open_in({ app: navAppLabel(choice, locale) })}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        <span className="font-normal opacity-70">
+          · {navAppLabel(app, getLocale())}
+        </span>
+      </a>
+    </Button>
   )
 }

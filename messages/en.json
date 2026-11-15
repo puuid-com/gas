@@ -124,5 +124,6 @@
   "panel_hide": "Hide list",
   "drive_fill_close": "Only {amount}/L less in {distance}",
   "search_trip_here": "Trip to {place}",
-  "costco_member": "Include Costco (members)"
+  "costco_member": "Include Costco (members)",
+  "directions_app": "Directions app"
 }
