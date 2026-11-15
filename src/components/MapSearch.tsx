@@ -16,6 +16,7 @@ import {
 import { Logo } from '#/components/AppHeader'
 import { AppMenu } from '#/components/AppMenu'
 import { MAP_ID } from '#/components/map/StationMap'
+import { SavedPlaces, useHasSavedPlaces } from '#/components/SavedPlaces'
 import { Button } from '#/components/ui/button'
 import {
   Command,
@@ -25,6 +26,7 @@ import {
 } from '#/components/ui/command'
 import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
 import { useStations } from '#/hooks/use-stations'
+import { useTripActions } from '#/hooks/use-trip'
 import { formatPrice } from '#/lib/format'
 import { distanceKm } from '#/lib/geo'
 import { stationTitle } from '#/lib/i18n'
@@ -72,7 +74,9 @@ function findStations(
 
 /**
  * The map's search bar: type a town or an address to move the map there, or a
- * station to open it. Also carries the list toggle and the menu.
+ * station to open it. Before anything is typed it offers the addresses
+ * navigated to before, one tap from a trip. Also carries the list toggle and
+ * the menu.
  */
 export function MapSearch({
   onOpenList,
@@ -87,6 +91,8 @@ export function MapSearch({
   const { stations } = useStations()
   const { fuel } = useAppSearch()
   const setSearch = useSetSearch()
+  const { setDestination } = useTripActions()
+  const hasSaved = useHasSavedPlaces()
   const fix = useSelector(locationStore, (s) => s.fix)
   const place = useSelector(mapStore, (s) => s.place)
   const panelOpen = useSelector(mapStore, (s) => s.panelOpen)
@@ -116,7 +122,12 @@ export function MapSearch({
 
   const goToPlace = (target: Place) => {
     done()
-    setPlace({ lng: target.lng, lat: target.lat, name: target.name })
+    setPlace({
+      lng: target.lng,
+      lat: target.lat,
+      name: target.name,
+      detail: target.detail,
+    })
     setFollow(false)
     setSearch({ station: undefined, region: undefined, view: 'map' })
     map?.flyTo({
@@ -130,6 +141,13 @@ export function MapSearch({
   const openStation = (station: Station) => {
     done()
     setSearch({ station: station.id, view: 'map' })
+  }
+
+  /** A saved address is somewhere to drive to: go straight to the trip. */
+  const tripTo = (target: Place) => {
+    done()
+    setPlace(null)
+    setDestination(target)
   }
 
   return (
@@ -206,6 +224,17 @@ export function MapSearch({
         </Button>
         <AppMenu className="size-10" />
       </div>
+
+      {focused && !searching && hasSaved && (
+        <CommandList
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute inset-x-0 top-full z-30 mt-1 max-h-[min(26rem,60dvh)] border bg-popover shadow-lg shadow-black/10"
+        >
+          <CommandGroup heading={m.search_saved()}>
+            <SavedPlaces onSelect={tripTo} />
+          </CommandGroup>
+        </CommandList>
+      )}
 
       {focused && searching && (
         <CommandList

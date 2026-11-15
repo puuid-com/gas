@@ -137,7 +137,7 @@ export function MapChrome() {
               <Button
                 className={cn(CHIP, 'bg-primary dark:bg-primary')}
                 onClick={() => {
-                  setDestination({ ...place, id: place.name, detail: '' })
+                  setDestination({ ...place, id: place.name })
                   setPlace(null)
                 }}
               >

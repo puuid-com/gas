@@ -125,5 +125,7 @@
   "drive_fill_close": "Seulement {amount}/L de moins dans {distance}",
   "search_trip_here": "Trajet vers {place}",
   "costco_member": "Inclure Costco (membres)",
-  "directions_app": "Appli d'itinéraire"
+  "directions_app": "Appli d'itinéraire",
+  "search_saved": "Adresses récentes",
+  "saved_remove": "Oublier {place}"
 }

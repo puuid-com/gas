@@ -4,6 +4,7 @@ import { useSelector } from '@tanstack/react-store'
 import { useDebouncedValue } from '@tanstack/react-pacer'
 import { Command as CommandPrimitive } from 'cmdk'
 import { IconCurrentLocation, IconLoader2, IconMapPin } from '@tabler/icons-react'
+import { SavedPlaces, useHasSavedPlaces } from '#/components/SavedPlaces'
 import { Command, CommandItem, CommandList } from '#/components/ui/command'
 import { InputGroup, InputGroupAddon } from '#/components/ui/input-group'
 import { placesQueryOptions } from '#/lib/trip.query'
@@ -30,7 +31,10 @@ interface PlaceFieldProps {
   className?: string
 }
 
-/** A place search box with suggestions from the geocoder. */
+/**
+ * A place search box with suggestions from the geocoder and, until a search
+ * starts, the addresses navigated to before.
+ */
 export function PlaceField({
   label,
   icon,
@@ -44,6 +48,7 @@ export function PlaceField({
 }: PlaceFieldProps) {
   const locale = getLocale()
   const fix = useSelector(locationStore, (s) => s.fix)
+  const hasSaved = useHasSavedPlaces()
   const inputRef = useRef<HTMLInputElement>(null)
   // null while not editing, so the field shows the chosen place.
   const [query, setQuery] = useState<string | null>(null)
@@ -59,7 +64,7 @@ export function PlaceField({
   const searching = (query ?? '').trim().length >= 2
   const results = searching ? (places.data ?? []) : []
   const settled = searching && !places.isFetching && debounced === query
-  const open = editing && (allowMyLocation || searching)
+  const open = editing && (allowMyLocation || hasSaved || searching)
 
   const choose = (place: Place | null) => {
     setQuery(null)
@@ -118,6 +123,7 @@ export function PlaceField({
               {m.my_location()}
             </CommandItem>
           )}
+          {!searching && <SavedPlaces onSelect={choose} />}
           {results.map((place) => (
             <CommandItem
               key={place.id}

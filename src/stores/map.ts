@@ -4,6 +4,8 @@ import type { Bounds, LngLat } from '#/lib/geo'
 /** A place found through the search bar, pinned on the map. */
 export interface PinnedPlace extends LngLat {
   name: string
+  /** Street or town, as the search listed it. */
+  detail: string
 }
 
 /** Wide-screen chrome: the floating list on the left, the card on the right. */

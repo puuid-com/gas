@@ -7,6 +7,7 @@ import { formatLatLng, locateOnRoute, parseLatLng } from '#/lib/geo'
 import { cheapestAlongRoute, stationsAlongRoute } from '#/lib/pricing'
 import { detoursQueryOptions, routeQueryOptions } from '#/lib/trip.query'
 import { locateOnce, locationStore } from '#/stores/location'
+import { rememberPlace } from '#/stores/places'
 import { MAX_CORRIDOR_KM, setTripStart, tripStore } from '#/stores/trip'
 import type { RouteLine } from '#/lib/geo'
 import type { AlongRoute, RouteStop } from '#/lib/pricing'
@@ -120,8 +121,9 @@ export function useTripActions() {
   const setSearch = useSetSearch()
 
   return {
-    /** Picking a destination shows the route on the map. */
+    /** Picking a destination shows the route on the map and saves the address. */
     setDestination(place: Place) {
+      rememberPlace(place)
       if (!search.from) void startHere()
       setSearch(
         {
@@ -136,7 +138,8 @@ export function useTripActions() {
     },
     /** `null` starts from the user's location. */
     setOrigin(place: Place | null) {
-      if (!place) void startHere()
+      if (place) rememberPlace(place)
+      else void startHere()
       setSearch({
         from: place ? formatLatLng(place) : undefined,
         fromName: place?.name,
