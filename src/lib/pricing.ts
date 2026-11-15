@@ -367,6 +367,14 @@ export interface RoadBlock {
   tier: Tier | -1
 }
 
+/**
+ * How many stretches to cut `rangeKm` of road into: ten up to 100 km, then
+ * one per 10 km so a long trip keeps its detail, as far as a phone can show.
+ */
+export function roadBlockCount(rangeKm: number) {
+  return Math.min(30, Math.max(10, Math.round(rangeKm / 10)))
+}
+
 /** Split the road ahead into equal stretches, each with its best tier. */
 export function roadBlocks(
   stops: ReadonlyArray<{ distanceKm: number; tier: Tier | -1 }>,

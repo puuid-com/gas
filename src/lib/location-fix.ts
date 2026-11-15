@@ -58,3 +58,35 @@ export function createFixTracker() {
     return next
   }
 }
+
+/** ~25 km/h: faster than a walk or a jog, slow enough for city traffic. */
+const DRIVING_MPS = 7
+/** Network-based positions jump around; only GPS-grade fixes count. */
+const DRIVING_ACCURACY_M = 50
+/** Ground to cover at that speed before it counts as a drive. */
+const DRIVING_RUN_M = 60
+
+/**
+ * True once the device has kept up car speed over real ground: an unbroken
+ * run of fast fixes that ends well outside where it began. A jittery position
+ * can fake a speed, but not a distance.
+ */
+export function createDriveDetector() {
+  let origin: Fix | null = null
+  return (fix: Fix) => {
+    const fast =
+      fix.speed != null &&
+      fix.speed >= DRIVING_MPS &&
+      fix.accuracy <= DRIVING_ACCURACY_M
+    if (!fast) {
+      origin = null
+      return false
+    }
+    origin ??= fix
+    const needed = Math.max(
+      DRIVING_RUN_M,
+      2 * Math.max(origin.accuracy, fix.accuracy),
+    )
+    return distanceKm(origin, fix) * 1000 >= needed
+  }
+}

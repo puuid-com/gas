@@ -1,6 +1,7 @@
 import { IconList } from '@tabler/icons-react'
 import { DriveButton } from '#/components/DriveButton'
 import { MapLegend } from '#/components/MapLegend'
+import { RoadStrip } from '#/components/RoadStrip'
 import {
   CorridorToggle,
   TripStatus,
@@ -29,6 +30,7 @@ export function TripCard({
   const { along } = trip
   const top = along?.candidates.slice(0, SHOWN) ?? []
   const summary = routeSummary(trip)
+  const line = trip.route.data?.line
 
   return (
     <section className="flex flex-col">
@@ -61,6 +63,21 @@ export function TripCard({
       </div>
 
       <TripStatus trip={trip} onChooseStart={onSeeList} className="px-4" />
+
+      {along && line && top.length > 0 && (
+        // The whole drive at a glance: where on the way the low prices are.
+        <RoadStrip
+          stops={along.candidates.map((c) => ({
+            distanceKm: c.alongKm,
+            tier: along.tiers.get(c.station.id) ?? -1,
+          }))}
+          rangeKm={Math.max(1, line.lengthKm)}
+          markKm={top[0].alongKm}
+          startLabel={m.strip_start()}
+          toDestination
+          className="px-4 pt-1 pb-2"
+        />
+      )}
 
       {along && (
         <div className="flex flex-col">

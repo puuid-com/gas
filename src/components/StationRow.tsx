@@ -57,10 +57,13 @@ export function StationRow({
           {subtitle ?? (station.city || station.address)}
         </div>
       </div>
-      <div className="shrink-0 text-right">
+      <div className="flex shrink-0 flex-col items-end">
         <div
           className={cn(
-            'text-xl leading-none font-semibold tracking-tight tabular-nums',
+            'text-2xl leading-none font-semibold tracking-tight tabular-nums',
+            // The low prices are the ones worth finding: fill them in.
+            tier === 0 && 'bg-tier-0 px-1.5 py-1 text-tier-0-fg',
+            tier === 1 && 'bg-tier-1 px-1.5 py-1 text-tier-1-fg',
             price == null && 'text-sm font-normal text-muted-foreground',
           )}
         >

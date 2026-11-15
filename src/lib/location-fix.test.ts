@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createFixTracker } from './location-fix'
+import { createDriveDetector, createFixTracker } from './location-fix'
 
 function position(
   lng: number,
@@ -61,5 +61,46 @@ describe('drive mode GPS course', () => {
     const fix = track(position(-72, 40_000, NaN, Infinity))
     expect(fix.heading).toBeNull()
     expect(fix.speed).toBeNull()
+  })
+})
+
+describe('drive detection', () => {
+  // At 45° N a step of 0.0002° of longitude is about 16 m.
+  const fix = (step: number, speed: number | null, accuracy = 5) => ({
+    lat: 45,
+    lng: -73 + step * 0.0002,
+    accuracy,
+    heading: null,
+    speed,
+    ts: step * 1000,
+  })
+
+  it('needs car speed held over real ground', () => {
+    const driving = createDriveDetector()
+    expect(driving(fix(0, 15))).toBe(false)
+    expect(driving(fix(1, 15))).toBe(false)
+    expect(driving(fix(3, 15))).toBe(false)
+    expect(driving(fix(4, 15))).toBe(true)
+  })
+
+  it('starts over at a walking pace or without a speed', () => {
+    const driving = createDriveDetector()
+    driving(fix(0, 15))
+    driving(fix(3, 15))
+    expect(driving(fix(4, 1.5))).toBe(false)
+    expect(driving(fix(5, 15))).toBe(false)
+    expect(driving(fix(6, null))).toBe(false)
+  })
+
+  it('is not fooled by a position that jitters in place', () => {
+    const driving = createDriveDetector()
+    for (const step of [0, 1, 0, 1, 0, 1]) {
+      expect(driving(fix(step, 16))).toBe(false)
+    }
+  })
+
+  it('ignores fast jumps between coarse positions', () => {
+    const driving = createDriveDetector()
+    for (let i = 0; i < 5; i++) expect(driving(fix(i * 50, 40, 800))).toBe(false)
   })
 })

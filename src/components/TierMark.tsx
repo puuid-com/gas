@@ -13,7 +13,7 @@ export const TIER_BG: Record<Tier | -1, string> = {
 
 /** Vertical bar in the station's regional price-tier colour. */
 export function TierBar({ tier, className }: { tier: Tier | -1; className?: string }) {
-  return <span aria-hidden className={cn('w-1 shrink-0 self-stretch', TIER_BG[tier], className)} />
+  return <span aria-hidden className={cn('w-1.5 shrink-0 self-stretch', TIER_BG[tier], className)} />
 }
 
 export function RegionStar({ className }: { className?: string }) {

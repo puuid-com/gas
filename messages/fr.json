@@ -127,5 +127,11 @@
   "costco_member": "Inclure Costco (membres)",
   "directions_app": "Appli d'itinéraire",
   "search_saved": "Adresses récentes",
-  "saved_remove": "Oublier {place}"
+  "saved_remove": "Oublier {place}",
+  "strip_trip": "Prix sur les {distance} jusqu'à destination",
+  "strip_start": "Départ",
+  "range_trip": "Trajet",
+  "ahead_none_trip": "Plus aucune station d'ici l'arrivée.",
+  "drive_fill_trip": "Rien de moins cher d'ici l'arrivée",
+  "drive_fill_only_trip": "La seule station d'ici l'arrivée"
 }

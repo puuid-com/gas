@@ -15,10 +15,10 @@ const MESSAGES: Partial<Record<GeoStatus, () => string>> = {
 export function useGeoErrorToasts() {
   useEffect(() => {
     let previous = locationStore.state.status
-    const sub = locationStore.subscribe(({ status, driving, fix }) => {
+    const sub = locationStore.subscribe(({ status, fix }) => {
       const message = MESSAGES[status]
-      // While driving with a recent fix, brief GPS dropouts aren't worth a toast.
-      if (status !== previous && message && !(driving && fix && status !== 'denied')) {
+      // Once located, a brief GPS dropout isn't worth a toast.
+      if (status !== previous && message && !(fix && status !== 'denied')) {
         toast.error(message(), { id: 'geo' })
       }
       previous = status

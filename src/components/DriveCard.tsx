@@ -1,5 +1,6 @@
 import { IconCheck, IconRouteAltLeft, IconX } from '@tabler/icons-react'
 import { DirectionsButton } from '#/components/DirectionsButton'
+import { RoadStrip } from '#/components/RoadStrip'
 import { StationRow } from '#/components/StationRow'
 import { TIER_BG } from '#/components/TierMark'
 import { Button } from '#/components/ui/button'
@@ -11,9 +12,13 @@ import { useTrip, useTripActions, useTripProgress } from '#/hooks/use-trip'
 import { formatCents, formatDollars, formatPrice } from '#/lib/format'
 import { formatDistance } from '#/lib/geo'
 import { stationTitle } from '#/lib/i18n'
-import { roadBlocks } from '#/lib/pricing'
 import { cn } from '#/lib/utils'
-import { AHEAD_RANGES_KM, setAheadRange, stopDriving } from '#/stores/location'
+import {
+  AHEAD_RANGES_KM,
+  setAheadRange,
+  setTripRange,
+  stopDriving,
+} from '#/stores/location'
 import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
 import type { DriveView } from '#/hooks/use-drive'
@@ -28,7 +33,8 @@ const LISTED = 30
 /**
  * Drive mode's card answers one question at a glance: stop at the next station
  * or keep going? The verdict comes first, then the two options side by side in
- * road order (nearer on the left) with the recommended one filled in.
+ * road order (nearer on the left) with the recommended one filled in green,
+ * the road ahead as a strip of prices, and one button to go there.
  *
  * `collapsed` (phones only) hides the full list of stations ahead.
  */
@@ -57,7 +63,11 @@ export function DriveCard({ collapsed = false }: { collapsed?: boolean }) {
             </>
           ) : view ? (
             <h2 className="text-base leading-snug font-medium text-balance">
-              {m.ahead_none({ distance: `${view.rangeKm} km` })}
+              {view.toDestination
+                ? m.ahead_none_trip()
+                : m.ahead_none({
+                    distance: formatDistance(view.rangeKm, getLocale()),
+                  })}
             </h2>
           ) : (
             <h2 className="text-base leading-snug font-medium">
@@ -130,14 +140,22 @@ export function DriveCard({ collapsed = false }: { collapsed?: boolean }) {
             )}
           </div>
 
-          <RoadStrip view={view} className="px-4" />
-
-          <DirectionsButton
-            to={decision.pick.station}
-            then={view.onRoute ? (trip.destination ?? undefined) : undefined}
-            size="lg"
+          <RoadStrip
+            stops={view.stops}
+            rangeKm={view.rangeKm}
+            markKm={decision.pick.distanceKm}
+            startLabel={m.ahead_here()}
+            toDestination={view.toDestination}
             className="px-4"
           />
+
+          <div className="px-4">
+            <DirectionsButton
+              to={decision.pick.station}
+              then={view.onRoute ? (trip.destination ?? undefined) : undefined}
+              size="lg"
+            />
+          </div>
         </>
       )}
 
@@ -153,7 +171,7 @@ export function DriveCard({ collapsed = false }: { collapsed?: boolean }) {
             <h3 className="min-w-0 flex-1 truncate text-sm font-medium">
               {m.drive_list_title()}
             </h3>
-            <RangeToggle value={view.rangeKm} />
+            <RangeToggle view={view} />
           </div>
           <div className="max-h-[36dvh] overflow-y-auto overscroll-contain lg:max-h-[max(8rem,calc(100dvh-38rem))]">
             {view.stops.slice(0, LISTED).map((stop) => (
@@ -179,7 +197,7 @@ function verdictText(view: DriveView) {
   const { decision, headingKnown } = view
   if (!decision) return null
   const locale = getLocale()
-  const range = `${view.rangeKm} km`
+  const range = formatDistance(view.rangeKm, locale)
 
   if (decision.verdict === 'go') {
     const saved = m.drive_go_sub({
@@ -200,17 +218,24 @@ function verdictText(view: DriveView) {
   return {
     title: headingKnown ? m.drive_fill() : m.drive_near_fill(),
     detail: !other
-      ? m.drive_fill_only({ distance: range })
+      ? view.toDestination
+        ? m.drive_fill_only_trip()
+        : m.drive_fill_only({ distance: range })
       : other.price < next.price
         ? m.drive_fill_close({
             amount: formatCents(next.price - other.price, locale),
             distance: formatDistance(other.distanceKm, locale),
           })
-        : m.drive_fill_sub({ distance: range }),
+        : view.toDestination
+          ? m.drive_fill_trip()
+          : m.drive_fill_sub({ distance: range }),
   }
 }
 
-/** One of the two options. The recommended one is filled, the other outlined. */
+/**
+ * One of the two options. The recommended one is filled in the cheapest
+ * tier's green, the other outlined, so the price to go for is the loud one.
+ */
 function StopTile({
   stop,
   label,
@@ -234,32 +259,39 @@ function StopTile({
 
   return (
     <Button
-      variant={chosen ? 'default' : 'outline'}
+      variant="outline"
       onClick={() => onSelect(stop.station.id)}
-      className="h-auto min-w-0 flex-col items-stretch gap-1.5 p-3 text-left whitespace-normal"
+      className={cn(
+        'h-auto min-w-0 flex-col items-stretch gap-1.5 p-3 text-left whitespace-normal',
+        chosen &&
+          'border-tier-0 bg-tier-0 text-tier-0-fg hover:bg-tier-0/90 hover:text-tier-0-fg dark:border-tier-0 dark:bg-tier-0 dark:hover:bg-tier-0/90',
+      )}
     >
-      <span className="flex items-center gap-1.5 text-xs font-medium">
-        <span
-          aria-hidden
-          className={cn('size-2.5 shrink-0 rounded-full', TIER_BG[stop.tier])}
-        />
+      <span className="flex items-center gap-1.5 text-sm font-medium">
+        {!chosen && (
+          <span
+            aria-hidden
+            className={cn('size-3 shrink-0 rounded-full', TIER_BG[stop.tier])}
+          />
+        )}
         <span className="min-w-0 flex-1 truncate">{label}</span>
         {chosen ? (
-          <IconCheck aria-label={m.drive_recommended()} />
+          <IconCheck className="size-5" aria-label={m.drive_recommended()} />
         ) : (
           delta && (
             <span className="shrink-0 font-semibold tabular-nums">{delta}</span>
           )
         )}
       </span>
-      <span className="text-4xl leading-none font-bold tracking-tight tabular-nums">
+      {/* As big as two tiles side by side allow on a narrow phone. */}
+      <span className="text-[clamp(2.25rem,11.5vw,3rem)] leading-none font-bold tracking-tight tabular-nums">
         {formatPrice(stop.price, locale)}
       </span>
       <span className="flex items-baseline gap-1.5">
-        <span className="shrink-0 text-lg leading-none font-semibold tabular-nums">
+        <span className="shrink-0 text-xl leading-none font-semibold tabular-nums">
           {formatDistance(stop.distanceKm, locale)}
         </span>
-        <span className="min-w-0 truncate text-xs font-normal opacity-70">
+        <span className="min-w-0 truncate text-xs font-normal opacity-80">
           {stationTitle(stop.station)}
         </span>
       </span>
@@ -268,55 +300,13 @@ function StopTile({
 }
 
 /**
- * The road ahead in ten stretches, each in the colour of its best price, with
- * a marker where the recommended station is.
+ * How far ahead to look. On a trip that is the whole drive, unless the tank
+ * says otherwise and a shorter range is picked.
  */
-function RoadStrip({
-  view,
-  className,
-}: {
-  view: DriveView
-  className?: string
-}) {
-  const { stops, rangeKm, decision } = view
-  const blocks = roadBlocks(stops, rangeKm)
-  const pickAt = decision
-    ? Math.min(100, (decision.pick.distanceKm / rangeKm) * 100)
-    : null
+function RangeToggle({ view }: { view: DriveView }) {
+  const item =
+    'h-9 px-2.5 tabular-nums data-[state=on]:bg-foreground data-[state=on]:text-background'
 
-  return (
-    <div
-      role="img"
-      aria-label={m.ahead_strip({ distance: `${rangeKm} km` })}
-      className={cn('flex flex-col gap-1', className)}
-    >
-      <div className="relative flex gap-0.5">
-        {blocks.map((b) => (
-          <span
-            key={b.fromKm}
-            className={cn(
-              'h-3 flex-1',
-              b.tier === -1 ? 'bg-muted' : TIER_BG[b.tier],
-            )}
-          />
-        ))}
-        {pickAt != null && (
-          <span
-            className="absolute -inset-y-1 w-1 -translate-x-1/2 bg-foreground ring-2 ring-background"
-            style={{ left: `clamp(2px, ${pickAt}%, calc(100% - 2px))` }}
-          />
-        )}
-      </div>
-      <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
-        <span>{m.ahead_here()}</span>
-        <span>{new Intl.NumberFormat(getLocale()).format(rangeKm / 2)} km</span>
-        <span>{rangeKm} km</span>
-      </div>
-    </div>
-  )
-}
-
-function RangeToggle({ value }: { value: AheadRangeKm }) {
   return (
     <div className="flex items-center gap-2">
       <ToggleGroup
@@ -324,23 +314,31 @@ function RangeToggle({ value }: { value: AheadRangeKm }) {
         size="sm"
         variant="outline"
         spacing={0}
-        value={String(value)}
-        onValueChange={(next) =>
-          next && setAheadRange(Number(next) as AheadRangeKm)
-        }
+        value={String(view.range)}
+        onValueChange={(next) => {
+          if (!next) return
+          if (!view.onRoute) setAheadRange(Number(next) as AheadRangeKm)
+          else
+            setTripRange(
+              next === 'trip' ? 'trip' : (Number(next) as AheadRangeKm),
+            )
+        }}
         aria-label={m.drive_range_label()}
       >
         {AHEAD_RANGES_KM.map((km) => (
-          <ToggleGroupItem
-            key={km}
-            value={String(km)}
-            className="h-9 px-2.5 tabular-nums data-[state=on]:bg-foreground data-[state=on]:text-background"
-          >
+          <ToggleGroupItem key={km} value={String(km)} className={item}>
             {km}
           </ToggleGroupItem>
         ))}
+        {view.onRoute && (
+          <ToggleGroupItem value="trip" className={item}>
+            {m.range_trip()}
+          </ToggleGroupItem>
+        )}
       </ToggleGroup>
-      <span className="text-xs text-muted-foreground">km</span>
+      {!view.onRoute && (
+        <span className="text-xs text-muted-foreground">km</span>
+      )}
     </div>
   )
 }

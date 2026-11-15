@@ -29,7 +29,7 @@ import {
   TIERS,
   rateAhead,
   stationsAheadByHeading,
-  stopsAhead,
+  stationsAheadOnRoute,
 } from '#/lib/pricing'
 import type { Tier } from '#/lib/pricing'
 import type { Fix } from '#/stores/location'
@@ -152,10 +152,12 @@ export function StationMap() {
   const driving = useSelector(locationStore, (s) => s.driving)
   const follow = useSelector(locationStore, (s) => s.follow)
   const aheadKm = useSelector(locationStore, (s) => s.aheadKm)
+  const tripRange = useSelector(locationStore, (s) => s.tripRange)
   const place = useSelector(mapStore, (s) => s.place)
   // The card resizing (collapsed, expanded, a station opened) moves the car.
   const insetBottom = useSelector(mapStore, (s) => s.insets.bottom)
   const followingRef = useRef(false)
+  const lastFixRef = useRef(0)
 
   // CSS tokens change with the theme class; re-read them when it flips.
   const palette = useMemo(() => readPalette(), [theme])
@@ -167,40 +169,51 @@ export function StationMap() {
   // Whole km, so driving rebuilds the features once per km rather than per fix.
   const { travelledKm } = useTripProgress(trip)
   const passedKm = travelledKm == null ? null : Math.floor(travelledKm)
-  const ahead = useMemo(
-    () =>
-      along &&
-      passedKm != null &&
-      new Set(stopsAhead(along, passedKm).map((c) => c.station.id)),
-    [along, passedKm],
-  )
+  const onRoute = along != null && passedKm != null
 
   // Drive mode's recommended station: its own pin, and the camera frames it.
   const pick = useDriveAhead(trip)?.decision?.pick.station ?? null
   const pickLng = pick?.lng
   const pickLat = pick?.lat
 
-  // Driving without a trip, colour only what's ahead, against each other.
-  // A coarse position and course keep the pins from flickering on every fix.
-  const spot = driving && !along ? fix : null
+  // Driving, colour only what's ahead, against each other: down the route on
+  // a trip, else in the direction of travel. A coarse position and course keep
+  // the pins from flickering on every fix.
+  const spot = driving && !onRoute ? fix : null
   const cellLat = spot ? Math.round(spot.lat * 400) / 400 : null
   const cellLng = spot ? Math.round(spot.lng * 280) / 280 : null
   const cellHeading =
     spot?.heading == null ? null : (Math.round(spot.heading / 15) * 15) % 360
   const driveTiers = useMemo(() => {
+    const tiered = (stops: Parameters<typeof rateAhead>[0]) =>
+      new globalThis.Map(rateAhead(stops).map((s) => [s.station.id, s.tier]))
+    if (along && passedKm != null) {
+      const rangeKm = tripRange === 'trip' ? Infinity : tripRange
+      return tiered(stationsAheadOnRoute(along, passedKm, rangeKm))
+    }
     if (cellLat == null || cellLng == null) return null
     const pool = region ? stations.filter((s) => s.region === region) : stations
-    const stops = stationsAheadByHeading(
-      pool,
-      fuel,
-      { lat: cellLat, lng: cellLng },
-      cellHeading,
-      aheadKm,
+    return tiered(
+      stationsAheadByHeading(
+        pool,
+        fuel,
+        { lat: cellLat, lng: cellLng },
+        cellHeading,
+        aheadKm,
+      ),
     )
-    return new globalThis.Map(
-      rateAhead(stops).map((s) => [s.station.id, s.tier]),
-    )
-  }, [cellLat, cellLng, cellHeading, stations, fuel, region, aheadKm])
+  }, [
+    along,
+    passedKm,
+    tripRange,
+    cellLat,
+    cellLng,
+    cellHeading,
+    stations,
+    fuel,
+    region,
+    aheadKm,
+  ])
 
   const data = useMemo<FeatureCollection<Point, StationProps>>(() => {
     return {
@@ -218,26 +231,26 @@ export function StationMap() {
             region: s.region,
             price: price ?? 9999,
             label: price == null ? '' : formatPrice(price, locale),
-            tier: along
-              ? (routeTier ?? -1)
-              : driveTiers
-                ? (driveTiers.get(s.id) ?? -1)
+            tier: driveTiers
+              ? (driveTiers.get(s.id) ?? -1)
+              : along
+                ? (routeTier ?? -1)
                 : (rank?.tier ?? -1),
-            star: along
-              ? along.cheapestIds.has(s.id)
-              : driveTiers
-                ? driveTiers.get(s.id) === 0
+            star: driveTiers
+              ? driveTiers.get(s.id) === 0
+              : along
+                ? along.cheapestIds.has(s.id)
                 : (rank?.regionCheapest ?? false),
-            dim: along
-              ? routeTier == null || (ahead ? !ahead.has(s.id) : false)
-              : driveTiers
-                ? !driveTiers.has(s.id)
+            dim: driveTiers
+              ? !driveTiers.has(s.id)
+              : along
+                ? routeTier == null
                 : region != null && s.region !== region,
           },
         }
       }),
     }
-  }, [stations, fuel, stats, locale, along, ahead, driveTiers, region])
+  }, [stations, fuel, stats, locale, along, driveTiers, region])
 
   const routeData = useMemo<Feature<LineString> | null>(
     () =>
@@ -314,6 +327,11 @@ export function StationMap() {
     const target =
       pickLng != null && pickLat != null ? { lng: pickLng, lat: pickLat } : null
     const container = map.getContainer()
+    // Glide for as long as fixes are apart, so the map turns and rolls
+    // continuously instead of lurching to each new position and waiting.
+    const gap = fix.ts - lastFixRef.current
+    lastFixRef.current = fix.ts
+    const glide = gap > 0 ? Math.min(2500, Math.max(600, gap)) : 1000
     map.easeTo({
       center: [fix.lng, fix.lat],
       zoom: driveZoom(container, fix, target),
@@ -321,8 +339,7 @@ export function StationMap() {
       pitch: fix.heading == null ? 0 : DRIVE_PITCH,
       padding: drivePadding(container.clientHeight),
       essential: true,
-      // Fixes come about once a second: glide between them rather than lurch.
-      ...(started ? { duration: 1200 } : { duration: 1000, easing: linear }),
+      ...(started ? { duration: 1200 } : { duration: glide, easing: linear }),
     })
   }, [loaded, driving, follow, fix, pickLng, pickLat, insetBottom])
 
@@ -424,6 +441,10 @@ export function StationMap() {
         setLoaded(true)
       }}
       onMoveEnd={syncView}
+      // Every touch of the map pushes drive mode's automatic recentre back.
+      onMove={(e) => {
+        if (e.originalEvent) setFollow(false)
+      }}
       onDragStart={() => setFollow(false)}
       onZoomStart={onZoomStart}
     >
@@ -436,7 +457,7 @@ export function StationMap() {
           <Layer {...labelLayer(palette, theme, driving, pick?.id)} />
         )}
         {pillsFor === theme && (
-          <Layer {...starLayer(theme, driving, pick?.id)} />
+          <Layer {...starLayer(palette, theme, driving, pick?.id)} />
         )}
         {pillsFor === theme && (
           <Layer {...pickLayer(palette, theme, pick?.id)} />

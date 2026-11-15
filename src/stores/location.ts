@@ -1,5 +1,5 @@
 import { createStore } from '@tanstack/react-store'
-import { createFixTracker } from '#/lib/location-fix'
+import { createDriveDetector, createFixTracker } from '#/lib/location-fix'
 import type { LngLat } from '#/lib/geo'
 
 export type GeoStatus =
@@ -27,6 +27,8 @@ export type RadiusKm = (typeof RADII_KM)[number]
 /** Drive mode: how far ahead a station is still worth driving to. */
 export const AHEAD_RANGES_KM = [10, 25, 50, 100] as const
 export type AheadRangeKm = (typeof AHEAD_RANGES_KM)[number]
+/** On a trip the road ahead is the whole drive, unless narrowed to a range. */
+export type TripRange = 'trip' | AheadRangeKm
 
 interface LocationState {
   status: GeoStatus
@@ -37,6 +39,7 @@ interface LocationState {
   follow: boolean
   radiusKm: RadiusKm
   aheadKm: AheadRangeKm
+  tripRange: TripRange
 }
 
 const RADIUS_KEY = 'plein:radius'
@@ -71,6 +74,7 @@ export const locationStore = createStore<LocationState>({
   follow: false,
   radiusKm: 10,
   aheadKm: 25,
+  tripRange: 'trip',
 })
 
 const patch = (next: Partial<LocationState>) =>
@@ -83,9 +87,32 @@ function errorStatus(err: GeolocationPositionError): GeoStatus {
 }
 
 let trackFix = createFixTracker()
+let atDrivingSpeed = createDriveDetector()
+/** The driver left drive mode by hand: don't put them back in it. */
+let autoDriveOff = false
+
+/** A touched map goes back to following the car after this long, if moving. */
+const RECENTER_AFTER_MS = 8_000
+const RECENTER_MPS = 3
+let unfollowedAt = 0
 
 function onPosition(pos: GeolocationPosition) {
-  patch({ status: 'ok', fix: trackFix(pos) })
+  const fix = trackFix(pos)
+  const { driving, follow } = locationStore.state
+  const fast = atDrivingSpeed(fix)
+  // Like a navigation app: moving at car speed is drive mode, no tap needed.
+  const start = !driving && !autoDriveOff && fast
+  const recenter =
+    driving &&
+    !follow &&
+    (fix.speed ?? 0) >= RECENTER_MPS &&
+    Date.now() - unfollowedAt >= RECENTER_AFTER_MS
+  patch({
+    status: 'ok',
+    fix,
+    ...(start && { driving: true }),
+    ...((start || recenter) && { follow: true }),
+  })
 }
 
 function onError(err: GeolocationPositionError) {
@@ -96,16 +123,36 @@ function onError(err: GeolocationPositionError) {
 const supported = () =>
   typeof navigator !== 'undefined' && 'geolocation' in navigator
 
+let watchId: number | null = null
+
+/** Follow the device from here on, so the map knows when it starts moving. */
+function watch() {
+  if (watchId != null) return
+  trackFix = createFixTracker()
+  atDrivingSpeed = createDriveDetector()
+  watchId = navigator.geolocation.watchPosition(onPosition, onError, {
+    enableHighAccuracy: true,
+    maximumAge: 1_000,
+    timeout: 20_000,
+  })
+}
+
 export function locateOnce(): Promise<Fix | null> {
   if (!supported()) {
     patch({ status: 'unsupported' })
     return Promise.resolve(null)
+  }
+  // Already tracking: the live fix is fresher than a new request would be.
+  const { fix } = locationStore.state
+  if (watchId != null && fix && Date.now() - fix.ts < 10_000) {
+    return Promise.resolve(fix)
   }
   patch({ status: 'locating' })
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         onPosition(pos)
+        watch()
         resolve(locationStore.state.fix)
       },
       (err) => {
@@ -117,32 +164,25 @@ export function locateOnce(): Promise<Fix | null> {
   })
 }
 
-let watchId: number | null = null
-
 export function startDriving() {
   if (!supported()) {
     patch({ status: 'unsupported' })
     return
   }
-  if (watchId == null) {
-    trackFix = createFixTracker()
-    if (!locationStore.state.fix) patch({ status: 'locating' })
-    watchId = navigator.geolocation.watchPosition(onPosition, onError, {
-      enableHighAccuracy: true,
-      maximumAge: 5_000,
-      timeout: 20_000,
-    })
-  }
+  if (!locationStore.state.fix) patch({ status: 'locating' })
+  watch()
+  autoDriveOff = false
   patch({ driving: true, follow: true })
 }
 
 export function stopDriving() {
-  if (watchId != null) navigator.geolocation.clearWatch(watchId)
-  watchId = null
+  autoDriveOff = true
   patch({ driving: false, follow: false })
 }
 
 export function setFollow(follow: boolean) {
+  // Every touch of the map pushes the automatic recentre back.
+  if (!follow) unfollowedAt = Date.now()
   if (locationStore.state.follow !== follow) patch({ follow })
 }
 
@@ -154,6 +194,10 @@ export function setRadius(radiusKm: RadiusKm) {
 export function setAheadRange(aheadKm: AheadRangeKm) {
   remember(AHEAD_KEY, aheadKm)
   patch({ aheadKm })
+}
+
+export function setTripRange(tripRange: TripRange) {
+  patch({ tripRange })
 }
 
 /** Restore preferences and, if permission was already granted, locate quietly. */

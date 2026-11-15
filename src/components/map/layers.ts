@@ -71,9 +71,9 @@ export function circleLayer(p: MapPalette): Circle {
         4,
         ['case', priced, ['case', ['==', tier, 0], 3.5, 2.5], 1.5],
         9,
-        ['case', priced, 5, 3],
+        ['case', priced, ['case', ['<=', tier, 1], 6, 5], 3],
         13,
-        ['case', priced, 7, 4],
+        ['case', priced, ['case', ['<=', tier, 1], 9, 7], 4],
       ],
       'circle-stroke-color': p.halo,
       'circle-stroke-width': [
@@ -91,43 +91,65 @@ export function circleLayer(p: MapPalette): Circle {
   }
 }
 
+/** Price labels grow as the price drops; drive mode reads at arm's length. */
+const LABEL_SIZE = {
+  map: { cheapest: 18, cheap: 16, rest: 13 },
+  drive: { cheapest: 28, cheap: 24, rest: 20 },
+}
+const PILL_PADDING: Record<'map' | 'drive', [number, number, number, number]> =
+  {
+    map: [3, 6, 2, 6],
+    drive: [5, 9, 4, 9],
+  }
+
 export function labelLayer(
   p: MapPalette,
   theme: string,
   driving = false,
   pickId?: string,
 ): Symbol {
+  const size = LABEL_SIZE[driving ? 'drive' : 'map']
   return {
     id: 'stations-label',
     type: 'symbol',
     minzoom: LABEL_MINZOOM,
-    filter: ['all', priced, ['!', ['get', 'star']], focused, notPick(pickId)],
+    filter: [
+      'all',
+      priced,
+      ['!', ['get', 'star']],
+      focused,
+      notPick(pickId),
+      // On the road only the low prices get a label; the rest stay dots.
+      ...(driving ? [['<=', tier, 1] as ExpressionSpecification] : []),
+    ],
     layout: {
       'text-field': ['get', 'label'],
       'text-font': FONT,
-      'text-size': driving ? 24 : 14,
+      'text-size': ['match', tier, 0, size.cheapest, 1, size.cheap, size.rest],
       'text-rotation-alignment': 'viewport',
       'icon-rotation-alignment': 'viewport',
       'text-anchor': 'bottom',
       'text-offset': [0, -0.9],
       'icon-image': ['concat', `pill-${theme}-`, ['to-string', tier]],
       'icon-text-fit': 'both',
-      'icon-text-fit-padding': driving ? [4, 8, 3, 8] : [2, 5, 1, 5],
+      'icon-text-fit-padding': PILL_PADDING[driving ? 'drive' : 'map'],
       // Lower price = placed first, so the cheapest labels survive collisions.
       'symbol-sort-key': ['get', 'price'],
       'symbol-z-order': 'source',
     },
     paint: {
-      'text-color': ['case', ['==', tier, 0], '#ffffff', p.text],
+      'text-color': ['match', tier, 0, p.onTier[0], 1, p.onTier[1], p.text],
     },
   }
 }
 
 export function starLayer(
+  p: MapPalette,
   theme: string,
   driving = false,
   pickId?: string,
 ): Symbol {
+  const size = LABEL_SIZE[driving ? 'drive' : 'map']
   return {
     id: 'stations-star',
     type: 'symbol',
@@ -136,19 +158,19 @@ export function starLayer(
       'text-field': ['concat', '★ ', ['get', 'label']],
       'text-font': FONT,
       'text-size': driving
-        ? 24
-        : ['interpolate', ['linear'], ['zoom'], 4, 12, 10, 14],
+        ? size.cheapest
+        : ['interpolate', ['linear'], ['zoom'], 4, 13, 10, size.cheapest],
       'text-rotation-alignment': 'viewport',
       'icon-rotation-alignment': 'viewport',
       'text-anchor': 'bottom',
       'text-offset': [0, -0.9],
       'icon-image': pillImageId(theme, 0),
       'icon-text-fit': 'both',
-      'icon-text-fit-padding': driving ? [4, 8, 3, 8] : [2, 5, 1, 5],
+      'icon-text-fit-padding': PILL_PADDING[driving ? 'drive' : 'map'],
       'symbol-sort-key': ['get', 'price'],
       'symbol-z-order': 'source',
     },
-    paint: { 'text-color': '#ffffff' },
+    paint: { 'text-color': p.onTier[0] },
   }
 }
 
@@ -168,14 +190,14 @@ export function pickLayer(
     layout: {
       'text-field': ['get', 'label'],
       'text-font': FONT,
-      'text-size': 26,
+      'text-size': 32,
       'text-rotation-alignment': 'viewport',
       'icon-rotation-alignment': 'viewport',
       'text-anchor': 'bottom',
       'text-offset': [0, -0.8],
       'icon-image': pillImageId(theme, 'pick'),
       'icon-text-fit': 'both',
-      'icon-text-fit-padding': [5, 10, 4, 10],
+      'icon-text-fit-padding': [6, 12, 5, 12],
       'text-allow-overlap': true,
       'icon-allow-overlap': true,
     },

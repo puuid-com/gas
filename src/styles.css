@@ -29,9 +29,12 @@
   --ring: oklch(0.708 0 0);
   --radius: 0.625rem;
 
-  /* Price tiers, ranked within each region. Hex so MapLibre can read them too. */
+  /* Price tiers, ranked within each region. Hex so MapLibre can read them too.
+     The two cheapest are filled in; -fg is the text that reads on that fill. */
   --tier-0: #0a8a43;
+  --tier-0-fg: #ffffff;
   --tier-1: #4caf72;
+  --tier-1-fg: #0a0a0a;
   --tier-2: #a3a3a3;
   --tier-3: #e0952b;
   --tier-4: #dc4a32;
@@ -66,7 +69,9 @@
   --ring: oklch(0.556 0 0);
 
   --tier-0: #3ddc84;
+  --tier-0-fg: #0a0a0a;
   --tier-1: #2f9e5e;
+  --tier-1-fg: #0a0a0a;
   --tier-2: #737373;
   --tier-3: #e8a23e;
   --tier-4: #f0654f;
@@ -103,7 +108,9 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-tier-0: var(--tier-0);
+  --color-tier-0-fg: var(--tier-0-fg);
   --color-tier-1: var(--tier-1);
+  --color-tier-1-fg: var(--tier-1-fg);
   --color-tier-2: var(--tier-2);
   --color-tier-3: var(--tier-3);
   --color-tier-4: var(--tier-4);

@@ -2,6 +2,8 @@ import type { Tier } from '#/lib/pricing'
 
 export interface MapPalette {
   tiers: Record<Tier, string>
+  /** Text that reads on the two filled-in (cheapest) tiers. */
+  onTier: Record<0 | 1, string>
   none: string
   halo: string
   text: string
@@ -20,6 +22,7 @@ export function readPalette(): MapPalette {
       3: v('--tier-3'),
       4: v('--tier-4'),
     },
+    onTier: { 0: v('--tier-0-fg'), 1: v('--tier-1-fg') },
     none: v('--tier-none'),
     halo: v('--map-halo'),
     text: v('--map-text'),
@@ -31,8 +34,9 @@ const PILL_RADIUS = 5
 
 /**
  * Stretchable rounded "price pill" used behind labels with icon-text-fit.
- * The cheapest tier is filled and the others outlined in their tier colour;
- * `pick` is drive mode's recommended station, inverted so it stands apart.
+ * The two cheapest tiers are filled, so low prices are the loud ones, and the
+ * rest outlined in their tier colour; `pick` is drive mode's recommended
+ * station, inverted so it stands apart.
  */
 export function drawPill(
   kind: Tier | 'pick',
@@ -49,7 +53,7 @@ export function drawPill(
   const edge = kind === 'pick' ? palette.text : palette.tiers[kind]
   ctx.beginPath()
   ctx.roundRect(line / 2, line / 2, size - line, size - line, r - line / 2)
-  ctx.fillStyle = kind === 'pick' || kind === 0 ? edge : palette.halo
+  ctx.fillStyle = kind === 'pick' || kind <= 1 ? edge : palette.halo
   ctx.fill()
   ctx.lineWidth = line
   ctx.strokeStyle = edge

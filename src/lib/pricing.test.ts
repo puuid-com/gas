@@ -7,6 +7,7 @@ import {
   median,
   decideStop,
   rateAhead,
+  roadBlockCount,
   roadBlocks,
   stationsAheadByHeading,
   stationsAlongRoute,
@@ -271,5 +272,14 @@ describe('decideStop', () => {
     const decision = decideStop([at(170, 3)])!
     expect(decision.verdict).toBe('stop')
     expect(decision.other).toBeNull()
+  })
+})
+
+describe('roadBlockCount', () => {
+  it('keeps ten stretches for short ranges and adds detail to long trips', () => {
+    expect(roadBlockCount(10)).toBe(10)
+    expect(roadBlockCount(100)).toBe(10)
+    expect(roadBlockCount(250)).toBe(25)
+    expect(roadBlockCount(900)).toBe(30)
   })
 })

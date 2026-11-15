@@ -11,7 +11,7 @@ import {
 import { locationStore } from '#/stores/location'
 import type { Trip } from '#/hooks/use-trip'
 import type { RatedStop, StopDecision } from '#/lib/pricing'
-import type { AheadRangeKm } from '#/stores/location'
+import type { TripRange } from '#/stores/location'
 
 export interface DriveView {
   /** Stations ahead within range, nearest first, tiered against each other. */
@@ -22,12 +22,18 @@ export interface DriveView {
   headingKnown: boolean
   /** Following the planned route, so distances are along it. */
   onRoute: boolean
-  rangeKm: AheadRangeKm
+  /** How far ahead `stops` reach, in km: never past the destination. */
+  rangeKm: number
+  /** The range ends at the trip's destination rather than at a set distance. */
+  toDestination: boolean
+  /** What the range toggle is set to. */
+  range: TripRange
 }
 
 /**
  * Drive mode's read of the road: what's ahead and where to fill up. On a trip
- * it follows the route; otherwise, or once off it, the direction of travel.
+ * it follows the route and looks all the way to the destination; otherwise, or
+ * once off the route, a set distance in the direction of travel.
  * Null when not driving or not located yet.
  */
 export function useDriveAhead(trip: Trip): DriveView | null {
@@ -35,27 +41,46 @@ export function useDriveAhead(trip: Trip): DriveView | null {
   const { fuel, region } = useAppSearch()
   const driving = useSelector(locationStore, (s) => s.driving)
   const fix = useSelector(locationStore, (s) => s.fix)
-  const rangeKm = useSelector(locationStore, (s) => s.aheadKm)
+  const aheadKm = useSelector(locationStore, (s) => s.aheadKm)
+  const tripRange = useSelector(locationStore, (s) => s.tripRange)
   const { travelledKm } = useTripProgress(trip)
   if (!driving || !fix) return null
 
   const { along } = trip
-  const onRoute = along != null && travelledKm != null
+  const line = trip.route.data?.line
+  const onRoute = along != null && line != null && travelledKm != null
+  if (onRoute) {
+    const remainingKm = Math.max(0, line.lengthKm - travelledKm)
+    const limit = tripRange === 'trip' ? Infinity : tripRange
+    const toDestination = limit >= remainingKm
+    // Never zero, so the last metres still have a road to draw.
+    const rangeKm = Math.max(1, Math.min(limit, remainingKm))
+    const stops = rateAhead(stationsAheadOnRoute(along, travelledKm, rangeKm))
+    return {
+      stops,
+      decision: decideStop(stops),
+      headingKnown: true,
+      onRoute,
+      rangeKm,
+      toDestination,
+      range: tripRange,
+    }
+  }
+
   const pool =
     region && !trip.active
       ? stations.filter((s) => s.region === region)
       : stations
   const stops = rateAhead(
-    onRoute
-      ? stationsAheadOnRoute(along, travelledKm, rangeKm)
-      : stationsAheadByHeading(pool, fuel, fix, fix.heading, rangeKm),
+    stationsAheadByHeading(pool, fuel, fix, fix.heading, aheadKm),
   )
-
   return {
     stops,
     decision: decideStop(stops),
-    headingKnown: onRoute || fix.heading != null,
+    headingKnown: fix.heading != null,
     onRoute,
-    rangeKm,
+    rangeKm: aheadKm,
+    toDestination: false,
+    range: aheadKm,
   }
 }

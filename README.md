@@ -10,14 +10,16 @@ refreshed every few minutes).
 
 - **Map** — every station, coloured by how its price ranks _within its
   administrative region_ (green = cheapest 10 %, red = priciest 10 %). From
-  zoom 10 prices appear as pills; when they overlap, the cheapest wins. A ★
-  marks each region's lowest price at every zoom.
+  zoom 10 prices appear as pills, larger and filled in for the low prices; when
+  they overlap, the cheapest wins. A ★ marks each region's lowest price at
+  every zoom.
 - **Fuel** — Regular by default; switch to Premium or Diesel.
 - **Near me** — locate once to see the cheapest stations within 5 / 10 / 25 km
   and the local median.
-- **Drive mode** — tracks your position, follows heading-up, keeps the screen
-  on, and ranks stations _ahead_ of you first. Pan to look around; Recenter to
-  resume.
+- **Drive mode** — starts by itself once you move at car speed (or tap Drive):
+  the map turns to face the way you're going, keeps the screen on, and labels
+  only the low prices _ahead_ of you. Pan to look around; it recentres on its
+  own after a few seconds of driving, or tap Recenter.
 - **List** — every station sorted by price or distance, with search and a
   region filter.
 - **Trip** — pick a destination (and optionally a start other than your
@@ -25,15 +27,17 @@ refreshed every few minutes).
   route, coloured against each other, with how far along the trip each one is
   and the real extra driving time to stop there (for the ten cheapest; the
   rest show their straight-line distance off the route). Sort by price or by
-  route order. In drive mode the
-  card counts down the distance to stations still ahead and offers to reroute
-  if you leave the route.
+  route order. A strip shows the prices over the whole drive. In drive mode the
+  card looks all the way to the destination (or a shorter range you pick),
+  counts down the distance to stations still ahead and offers to reroute if
+  you leave the route. Addresses you navigate to are saved on the device and
+  offered again in the search fields.
 - **Regions** — each region on one province-wide scale (range, median, lowest
   price) against the Quebec median; tap one to frame it on the map.
-- **Directions** — open the station in Apple Maps, Google Maps or Waze (last
-  choice remembered). On a trip, Apple Maps and Google Maps get the station as
-  a stop on the way to the destination; Waze links take one destination, so
-  they go to the station.
+- **Directions** — one tap opens the station in Waze; the menu switches to
+  Google Maps or Apple Maps. On a trip, Google Maps and Apple Maps get the
+  station as a stop on the way to the destination; Waze links take one
+  destination, so they go to the station.
 - French (default) and English, light and dark themes, installable to the home
   screen.
 
@@ -78,7 +82,7 @@ tunnel.
 - `src/lib/geo.ts` — distances, bearings, route indexing and projection
 - `src/lib/places.ts`, `src/lib/routing.ts` — place search and driving routes
 - `src/hooks/use-trip.ts` — the trip in the URL, its route and corridor
-- `src/stores/location.ts` — locate, drive mode, follow, radius
+- `src/stores/location.ts` — live position, drive mode, follow, radius
 - `src/stores/trip.ts` — corridor width, trip start
 - `src/components/map/` — MapLibre map, layers, price pills, user marker
 - `src/components/` — header, cards, station list, regions view
