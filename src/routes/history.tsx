@@ -10,6 +10,7 @@ import { Logo } from '#/components/AppHeader'
 import { FuelToggleGroup } from '#/components/FuelToggle'
 import {
   RegionTable,
+  SpreadSection,
   StaleList,
   StationSection,
   TrendSection,
@@ -207,6 +208,7 @@ function HistoryPage() {
       {station && (
         <TrendSection history={history} fuel={fuel} region={region} />
       )}
+      <SpreadSection fuel={fuel} region={region} />
       <RegionTable history={history} region={region} />
       {!station && history.snapshots > 0 && (
         <StationSection fuel={fuel} range={range} />

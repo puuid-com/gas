@@ -1,4 +1,14 @@
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import {
   ChartContainer,
   ChartLegend,
@@ -133,6 +143,200 @@ export function PriceChart({
           />
         )}
       </LineChart>
+    </ChartContainer>
+  )
+}
+
+/**
+ * Each region's median now, cheapest first, as horizontal bars. The selected
+ * region is drawn in the accent; a click selects (or clears) a region.
+ */
+export function RegionChart({
+  regions,
+  selected,
+  label,
+  onSelect,
+}: {
+  regions: Array<{ region: string; median: number }>
+  selected?: string
+  label: string
+  onSelect: (region: string) => void
+}) {
+  const locale = getLocale()
+  const data = [...regions].sort((a, b) => a.median - b.median)
+  const config = {
+    median: { label, color: 'var(--chart-line)' },
+  } satisfies ChartConfig
+  const values = data.map((d) => d.median)
+  const low = Math.floor(Math.min(...values) - 2)
+  const high = Math.ceil(Math.max(...values) + 1)
+
+  return (
+    <ChartContainer
+      config={config}
+      className="aspect-auto w-full"
+      style={{ height: data.length * 28 + 32 }}
+    >
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 0, right: 48, bottom: 0, left: 0 }}
+        barCategoryGap={4}
+      >
+        <CartesianGrid horizontal={false} />
+        <XAxis
+          type="number"
+          domain={[low, high]}
+          allowDataOverflow
+          tickFormatter={(v: number) => String(Math.round(v))}
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+        />
+        <YAxis
+          type="category"
+          dataKey="region"
+          width={140}
+          interval={0}
+          tickFormatter={(r: string) =>
+            r.length > 20 ? `${r.slice(0, 19)}…` : r
+          }
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 12 }}
+        />
+        <ChartTooltip
+          cursor={{ fill: 'var(--muted)', opacity: 0.6 }}
+          content={
+            <ChartTooltipContent
+              hideIndicator
+              formatter={(value) => (
+                <span className="font-medium text-foreground tabular-nums">
+                  {formatPrice(Number(value), locale)} ¢/L
+                </span>
+              )}
+            />
+          }
+        />
+        <Bar
+          dataKey="median"
+          radius={0}
+          isAnimationActive={false}
+          className="cursor-pointer"
+          onClick={(entry) => {
+            const region = (entry as { payload?: { region?: string } }).payload
+              ?.region
+            if (region) onSelect(region)
+          }}
+          label={{
+            position: 'right',
+            className: 'fill-muted-foreground text-xs tabular-nums',
+            formatter: (v: unknown) => formatPrice(Number(v), locale),
+          }}
+        >
+          {data.map((d) => (
+            <Cell
+              key={d.region}
+              fill={
+                !selected || d.region === selected
+                  ? 'var(--color-median)'
+                  : 'var(--muted-foreground)'
+              }
+              fillOpacity={!selected || d.region === selected ? 1 : 0.35}
+            />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  )
+}
+
+/**
+ * How many stations post each price right now, in 1 ¢ bins, with the median
+ * marked.
+ */
+export function DistributionChart({
+  prices,
+  label,
+}: {
+  /** Current prices in ¢/L, sorted ascending. */
+  prices: ReadonlyArray<number>
+  label: string
+}) {
+  const locale = getLocale()
+  const low = Math.floor(prices[0])
+  const high = Math.floor(prices[prices.length - 1])
+  const bins = Array.from({ length: high - low + 1 }, (_, i) => ({
+    price: low + i,
+    count: 0,
+  }))
+  for (const p of prices) bins[Math.floor(p) - low].count++
+  const mid = prices.length >> 1
+  const median =
+    prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2
+  const config = {
+    count: { label, color: 'var(--chart-line)' },
+  } satisfies ChartConfig
+
+  return (
+    <ChartContainer config={config} className="aspect-auto h-48 w-full sm:h-56">
+      <BarChart
+        data={bins}
+        margin={{ top: 20, right: 8, bottom: 0, left: 0 }}
+        barCategoryGap={1}
+      >
+        <CartesianGrid vertical={false} />
+        <XAxis
+          dataKey="price"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={8}
+          minTickGap={24}
+        />
+        <YAxis
+          allowDecimals={false}
+          tickLine={false}
+          axisLine={false}
+          width={36}
+        />
+        <ChartTooltip
+          cursor={{ fill: 'var(--muted)', opacity: 0.6 }}
+          content={
+            <ChartTooltipContent
+              hideIndicator
+              labelFormatter={(_, payload) => {
+                const price = (
+                  payload[0]?.payload as { price?: number } | undefined
+                )?.price
+                return price == null
+                  ? null
+                  : `${formatPrice(price, locale)}–${formatPrice(price + 0.9, locale)} ¢/L`
+              }}
+              formatter={(value) => (
+                <span className="font-medium text-foreground tabular-nums">
+                  {value} {label}
+                </span>
+              )}
+            />
+          }
+        />
+        <Bar
+          dataKey="count"
+          fill="var(--color-count)"
+          radius={0}
+          isAnimationActive={false}
+        />
+        <ReferenceLine
+          x={Math.floor(median)}
+          stroke="var(--foreground)"
+          strokeDasharray="4 4"
+          label={{
+            value: formatPrice(median, locale),
+            position: 'top',
+            className: 'fill-foreground text-xs font-medium tabular-nums',
+          }}
+        />
+      </BarChart>
     </ChartContainer>
   )
 }

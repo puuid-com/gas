@@ -179,5 +179,9 @@
   "stale_list_caption": "Stations dont les prix n'ont pas changé depuis {days} jours ou plus.",
   "stale_none": "Aucune pour le moment.",
   "stale_more": "Et {count} de plus.",
-  "stale_share": "{count} stations sur {total} probablement pas à jour"
+  "stale_share": "{count} stations sur {total} probablement pas à jour",
+  "history_regions_caption": "Prix médian actuel, du moins cher au plus cher. Choisissez une région pour la voir.",
+  "history_spread": "Les prix en ce moment",
+  "history_spread_caption": "Nombre de stations à chaque prix, en ¢/L. Pointillé : médiane.",
+  "history_stations_unit": "stations"
 }

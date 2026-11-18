@@ -8,9 +8,14 @@ import {
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useDebouncedValue } from '@tanstack/react-pacer'
-import { PriceChart } from '#/components/history/charts'
+import {
+  DistributionChart,
+  PriceChart,
+  RegionChart,
+} from '#/components/history/charts'
 import { StaleNotice, StaleTag } from '#/components/StaleMark'
 import { Button } from '#/components/ui/button'
+import { Skeleton } from '#/components/ui/skeleton'
 import {
   Command,
   CommandEmpty,
@@ -51,6 +56,7 @@ import { cn } from '#/lib/utils'
 import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
 import type { PriceHistory, Range, StationRecord } from '#/lib/history'
+import { stationsQueryOptions } from '#/lib/stations.query'
 import type { Fuel } from '#/lib/stations'
 
 const title = (s: Pick<StationRecord, 'brand' | 'name'>) => s.brand ?? s.name
@@ -181,9 +187,7 @@ export function TrendSection({
           </figcaption>
         </figure>
       ) : (
-        <p className="border p-4 text-sm text-muted-foreground">
-          {m.history_short()}
-        </p>
+        <p className="text-sm text-muted-foreground">{m.history_short()}</p>
       )}
     </section>
   )
@@ -203,7 +207,15 @@ export function RegionTable({
 
   return (
     <section className="flex flex-col gap-3">
-      <SectionHeading>{m.history_regions()}</SectionHeading>
+      <SectionHeading caption={m.history_regions_caption()}>
+        {m.history_regions()}
+      </SectionHeading>
+      <RegionChart
+        regions={history.regions}
+        selected={region}
+        label={m.history_col_median()}
+        onSelect={(r) => setSearch({ region: r === region ? undefined : r })}
+      />
       <Table>
         <TableHeader>
           <TableRow>
@@ -270,6 +282,40 @@ export function RegionTable({
           })}
         </TableBody>
       </Table>
+    </section>
+  )
+}
+
+/** How today's prices spread across stations, from the live feed. */
+export function SpreadSection({
+  fuel,
+  region,
+}: {
+  fuel: Fuel
+  region?: string
+}) {
+  const { data, isPending } = useQuery(stationsQueryOptions)
+  const prices = data?.stations
+    .filter((s) => !region || s.region === region)
+    .map((s) => s.prices[fuel])
+    .filter((p): p is number => p != null)
+    .sort((a, b) => a - b)
+
+  return (
+    <section className="flex flex-col gap-3">
+      <SectionHeading caption={m.history_spread_caption()}>
+        {m.history_spread()}
+        <span className="ml-2 font-normal text-muted-foreground">
+          {fuelLabel(fuel)} · {region ?? m.whole_province()}
+        </span>
+      </SectionHeading>
+      {isPending ? (
+        <Skeleton className="h-48 w-full sm:h-56" />
+      ) : prices && prices.length > 0 ? (
+        <DistributionChart prices={prices} label={m.history_stations_unit()} />
+      ) : (
+        <p className="text-sm text-muted-foreground">{m.error_loading()}</p>
+      )}
     </section>
   )
 }
