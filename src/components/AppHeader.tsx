@@ -1,4 +1,5 @@
-import { IconList, IconMap } from '@tabler/icons-react'
+import { IconChartLine, IconList, IconMap } from '@tabler/icons-react'
+import { Link } from '@tanstack/react-router'
 import { cn } from '#/lib/utils'
 import { AppMenu } from '#/components/AppMenu'
 import { FuelToggle } from '#/components/FuelToggle'
@@ -12,7 +13,7 @@ import { m } from '#/paraglide/messages'
 
 export function AppHeader({ className }: { className?: string }) {
   const { generatedAt } = useStations()
-  const { view } = useAppSearch()
+  const { view, fuel } = useAppSearch()
   const setSearch = useSetSearch()
   const now = useNow()
   const nextView = view === 'map' ? 'list' : 'map'
@@ -22,9 +23,16 @@ export function AppHeader({ className }: { className?: string }) {
       <div className="flex items-center gap-2">
         <Logo />
         <div className="flex min-w-0 items-baseline gap-2">
-          <h1 className="text-[15px] font-semibold tracking-tight">{m.app_name()}</h1>
-          <p className="truncate text-xs text-muted-foreground" title={generatedAt}>
-            {m.updated({ time: formatRelative(new Date(generatedAt), getLocale(), now) })}
+          <h1 className="text-[15px] font-semibold tracking-tight">
+            {m.app_name()}
+          </h1>
+          <p
+            className="truncate text-xs text-muted-foreground"
+            title={generatedAt}
+          >
+            {m.updated({
+              time: formatRelative(new Date(generatedAt), getLocale(), now),
+            })}
           </p>
         </div>
         <div className="ml-auto flex items-center">
@@ -36,6 +44,12 @@ export function AppHeader({ className }: { className?: string }) {
           >
             {nextView === 'list' ? <IconList /> : <IconMap />}
             {nextView === 'list' ? m.view_list() : m.view_map()}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8" asChild>
+            <Link to="/history" search={{ fuel }}>
+              <IconChartLine />
+              {m.price_history()}
+            </Link>
           </Button>
           <AppMenu />
         </div>

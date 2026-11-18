@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSelector } from '@tanstack/react-store'
-import { IconRoute, IconX } from '@tabler/icons-react'
+import { IconChartLine, IconRoute, IconX } from '@tabler/icons-react'
+import { Link } from '@tanstack/react-router'
 import { AppHeader } from '#/components/AppHeader'
 import { AppMenu } from '#/components/AppMenu'
 import { DriveCard } from '#/components/DriveCard'
@@ -70,7 +71,7 @@ const CHIP =
  * the menu and the drive card.
  */
 export function MapChrome() {
-  const { station: selected, region, to, toName, view } = useAppSearch()
+  const { station: selected, region, to, toName, view, fuel } = useAppSearch()
   const { byId } = useStations()
   // A stale link, or a station the preferences now hide, selects nothing.
   const station = selected && byId.has(selected) ? selected : undefined
@@ -114,6 +115,16 @@ export function MapChrome() {
               )}
               itemClassName="flex-none bg-background px-3 dark:bg-background"
             />
+            <Button
+              variant="outline"
+              className={cn(CHIP, driving && 'max-lg:hidden')}
+              asChild
+            >
+              <Link to="/history" search={{ fuel }}>
+                <IconChartLine data-icon="inline-start" />
+                {m.price_history()}
+              </Link>
+            </Button>
             {region && (
               <Button
                 variant="outline"
