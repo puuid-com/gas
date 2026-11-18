@@ -6,14 +6,14 @@ import { Button } from '#/components/ui/button'
 import { useNow } from '#/hooks/use-now'
 import { formatRelative } from '#/lib/format'
 import { isStale } from '#/lib/history'
-import { stationHistoryQueryOptions } from '#/lib/history.query'
+import { stationQueryOptions } from '#/lib/history.query'
 import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
 import type { Fuel } from '#/lib/stations'
 
 /** When the station's prices last moved, a warning if long ago, and a link to its history. */
 export function StationFreshness({ id, fuel }: { id: string; fuel: Fuel }) {
-  const { data } = useQuery(stationHistoryQueryOptions(id))
+  const { data } = useQuery(stationQueryOptions(id))
   const now = useNow()
   const station = data?.station
 

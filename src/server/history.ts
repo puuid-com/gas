@@ -7,7 +7,6 @@ import {
   samePrices,
   searchKey,
 } from '#/lib/history'
-import { FUELS } from '#/lib/stations'
 import type {
   PriceHistory,
   Prices,
@@ -15,6 +14,7 @@ import type {
   StaleStations,
   StationHistory,
   StationRecord,
+  StationSummary,
 } from '#/lib/history'
 import type { Fuel, StationsData } from '#/lib/stations'
 
@@ -94,10 +94,17 @@ SELECT
   j.value ->> 'median', j.value ->> 'mean', j.value ->> 'max', j.value ->> 'stale'
 FROM json_each(?1) AS j`
 
+const UPDATE_META = `
+INSERT INTO history_meta (id, first_at, last_at, snapshots) VALUES (1, ?1, ?1, 1)
+ON CONFLICT (id) DO UPDATE SET
+  first_at = min(first_at, excluded.first_at),
+  last_at = max(last_at, excluded.last_at),
+  snapshots = snapshots + 1`
+
 /**
  * Record the feed as it is now: every station's current prices, a change row
- * for each station whose prices differ from its last snapshot, and the price
- * spread per region. Runs as one transaction.
+ * for each station whose prices differ from its last snapshot, the price
+ * spread per region, and the snapshot count. Runs as one transaction.
  */
 export async function takeSnapshot(
   db: D1Database,
@@ -145,22 +152,41 @@ export async function takeSnapshot(
     db
       .prepare(INSERT_STATS)
       .bind(JSON.stringify(computeRegionStats(entries, at)), at),
+    db.prepare(UPDATE_META).bind(at),
   ])
 
   return { at, stations: rows.length, changed: changes.length }
 }
 
+/** Snapshot count and first/latest times: one row, kept by takeSnapshot. */
 async function snapshotRange(db: D1Database) {
   const row = await db
     .prepare(
-      'SELECT min(at) AS first, max(at) AS last, count(*) AS n FROM snapshots',
+      'SELECT first_at, last_at, snapshots FROM history_meta WHERE id = 1',
     )
-    .first<{ first: number | null; last: number | null; n: number }>()
+    .first<{ first_at: number; last_at: number; snapshots: number }>()
   return {
-    first: row?.first ?? null,
-    last: row?.last ?? null,
-    count: row?.n ?? 0,
+    first: row?.first_at ?? null,
+    last: row?.last_at ?? null,
+    count: row?.snapshots ?? 0,
   }
+}
+
+interface SeriesRow {
+  at: number
+  count: number
+  min: number
+  median: number
+  max: number
+  stale: number
+}
+
+interface RankingRow {
+  region: string
+  count: number
+  median: number
+  stale: number
+  start_median: number | null
 }
 
 /** Median and spread over time for a region (or Quebec), plus every region now. */
@@ -175,22 +201,19 @@ export async function getPriceHistory(
   const since = rangeStart(range, span.last)
   const target = region ?? QUEBEC
 
-  const [series, regions] = await db.batch<{
-    region: string
-    at: number
-    count: number
-    min: number
-    median: number
-    max: number
-    stale: number
-    start_median: number | null
-  }>([
+  // One region per statement: naming it keeps SQLite on the (fuel, region,
+  // at) key, reading only that region's rows in the range.
+  const series = (key: string) =>
     db
       .prepare(
-        `SELECT region, at, count, min, median, max, stale FROM region_stats
-         WHERE fuel = ?1 AND region IN (?2, ?3) AND at >= ?4 ORDER BY at`,
+        `SELECT at, count, min, median, max, stale FROM region_stats
+         WHERE fuel = ?1 AND region = ?2 AND at >= ?3 ORDER BY at`,
       )
-      .bind(fuel, QUEBEC, target, since),
+      .bind(fuel, key, since)
+
+  const [ranking, points, ...quebec] = await db.batch([
+    // Every region at the latest snapshot (region_stats_at), each with its
+    // median at the start of the range (one key lookup per region).
     db
       .prepare(
         `SELECT r.region, r.count, r.median, r.stale,
@@ -202,30 +225,32 @@ export async function getPriceHistory(
          ORDER BY r.median`,
       )
       .bind(fuel, span.last, since),
+    series(target),
+    ...(target === QUEBEC ? [] : [series(QUEBEC)]),
   ])
 
-  const quebec = new Map<number, number>()
-  for (const row of series.results) {
-    if (row.region === QUEBEC) quebec.set(row.at, row.median)
-  }
-  const points = series.results
-    .filter((row) => row.region === target)
-    .map((row) => ({
+  // Province medians beside a region's, when one is selected.
+  const quebecAt = new Map(
+    ((quebec.at(0)?.results ?? []) as Array<SeriesRow>).map((row) => [
+      row.at,
+      row.median,
+    ]),
+  )
+
+  return {
+    first: span.first,
+    last: span.last,
+    snapshots: span.count,
+    points: (points.results as Array<SeriesRow>).map((row) => ({
       at: row.at,
       median: row.median,
       min: row.min,
       max: row.max,
       count: row.count,
       stale: row.stale,
-      quebec: target === QUEBEC ? null : (quebec.get(row.at) ?? null),
-    }))
-
-  return {
-    first: span.first,
-    last: span.last,
-    snapshots: span.count,
-    points,
-    regions: regions.results.map((row) => ({
+      quebec: target === QUEBEC ? null : (quebecAt.get(row.at) ?? null),
+    })),
+    regions: (ranking.results as Array<RankingRow>).map((row) => ({
       region: row.region,
       count: row.count,
       median: row.median,
@@ -235,54 +260,70 @@ export async function getPriceHistory(
   }
 }
 
-/** Every price a station has had, with its regional median alongside. */
-export async function getStationHistory(
+/** A station's current prices and how long snapshots go back: two rows. */
+export async function getStation(
   db: D1Database,
   id: string,
-): Promise<StationHistory | null> {
-  const row = await db
-    .prepare('SELECT * FROM stations WHERE id = ?1')
-    .bind(id)
-    .first<StationRow>()
-  if (!row) return null
-
-  const [changes, medians, span] = await Promise.all([
+): Promise<StationSummary | null> {
+  const [row, span] = await Promise.all([
     db
-      .prepare(
-        'SELECT at, regular, super, diesel FROM price_changes WHERE station_id = ?1 ORDER BY at',
-      )
+      .prepare('SELECT * FROM stations WHERE id = ?1')
       .bind(id)
-      .all<Prices & { at: number }>(),
-    db
-      .prepare(
-        // Naming every fuel lets SQLite use the (fuel, region, at) key
-        // instead of scanning the whole table, which grows every run.
-        `SELECT fuel, at, median FROM region_stats
-         WHERE fuel IN (${FUELS.map((_, i) => `?${i + 2}`).join(', ')}) AND region = ?1
-         ORDER BY at`,
-      )
-      .bind(row.region, ...FUELS)
-      .all<{ fuel: Fuel; at: number; median: number }>(),
+      .first<StationRow>(),
     snapshotRange(db),
   ])
-
-  const regionMedians: StationHistory['regionMedians'] = {
-    regular: [],
-    super: [],
-    diesel: [],
-  }
-  for (const m of medians.results) {
-    if (FUELS.includes(m.fuel)) {
-      regionMedians[m.fuel].push({ at: m.at, median: m.median })
-    }
-  }
-
+  if (!row) return null
   return {
     station: toRecord(row),
-    changes: changes.results.map((c) => ({ at: c.at, prices: pricesOf(c) })),
-    regionMedians,
     first: span.first ?? row.changed_at,
     last: span.last ?? row.seen_at,
+  }
+}
+
+type PriceRow = Prices & { at: number }
+
+const toChange = (row: PriceRow) => ({ at: row.at, prices: pricesOf(row) })
+
+/**
+ * A station's prices over a range for one fuel, with its regional median
+ * alongside. Reads only that range: its changes, the one before it, and the
+ * region's medians, each by key.
+ */
+export async function getStationHistory(
+  db: D1Database,
+  { id, fuel, range }: { id: string; fuel: Fuel; range: Range },
+): Promise<StationHistory | null> {
+  const summary = await getStation(db, id)
+  if (!summary) return null
+  const since = rangeStart(range, summary.last)
+
+  const [changes, before, medians] = await db.batch([
+    db
+      .prepare(
+        `SELECT at, regular, super, diesel FROM price_changes
+         WHERE station_id = ?1 AND at >= ?2 ORDER BY at`,
+      )
+      .bind(id, since),
+    db
+      .prepare(
+        `SELECT at, regular, super, diesel FROM price_changes
+         WHERE station_id = ?1 AND at < ?2 ORDER BY at DESC LIMIT 1`,
+      )
+      .bind(id, since),
+    db
+      .prepare(
+        `SELECT at, median FROM region_stats
+         WHERE fuel = ?1 AND region = ?2 AND at >= ?3 ORDER BY at`,
+      )
+      .bind(fuel, summary.station.region, since),
+  ])
+  const previous = (before.results as Array<PriceRow>).at(0)
+
+  return {
+    ...summary,
+    before: previous ? toChange(previous) : null,
+    changes: (changes.results as Array<PriceRow>).map(toChange),
+    medians: medians.results as Array<{ at: number; median: number }>,
   }
 }
 

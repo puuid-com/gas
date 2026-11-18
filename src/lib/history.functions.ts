@@ -4,6 +4,7 @@ import { getDb } from '#/server/db.server'
 import {
   getPriceHistory,
   getStaleStations,
+  getStation,
   getStationHistory,
   listStaleStations,
   searchStations,
@@ -17,9 +18,15 @@ export const fetchPriceHistory = createServerFn({ method: 'GET' })
   .validator(z.object({ fuel: z.enum(FUELS), region, range: z.enum(RANGES) }))
   .handler(({ data }) => getPriceHistory(getDb(), data))
 
+const id = z.string().min(1).max(200)
+
+export const fetchStation = createServerFn({ method: 'GET' })
+  .validator(z.object({ id }))
+  .handler(({ data }) => getStation(getDb(), data.id))
+
 export const fetchStationHistory = createServerFn({ method: 'GET' })
-  .validator(z.object({ id: z.string().min(1).max(200) }))
-  .handler(({ data }) => getStationHistory(getDb(), data.id))
+  .validator(z.object({ id, fuel: z.enum(FUELS), range: z.enum(RANGES) }))
+  .handler(({ data }) => getStationHistory(getDb(), data))
 
 export const fetchStaleStations = createServerFn({ method: 'GET' }).handler(
   () => getStaleStations(getDb()),

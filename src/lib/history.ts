@@ -172,14 +172,21 @@ export interface PriceChange {
   prices: Prices
 }
 
-export interface StationHistory {
+export interface StationSummary {
   station: StationRecord
-  /** Every distinct set of prices, oldest first. */
-  changes: Array<PriceChange>
-  /** The station's regional median at each snapshot, per fuel. */
-  regionMedians: Record<Fuel, Array<{ at: number; median: number }>>
+  /** First and latest snapshot times. */
   first: number
   last: number
+}
+
+/** A station over one range, for one fuel. */
+export interface StationHistory extends StationSummary {
+  /** Its prices going into the range; null if first seen within it. */
+  before: PriceChange | null
+  /** Every distinct set of prices within the range, oldest first. */
+  changes: Array<PriceChange>
+  /** Its regional median for the fuel at each snapshot in the range. */
+  medians: Array<{ at: number; median: number }>
 }
 
 export interface StaleStations {

@@ -3,6 +3,7 @@ import {
   fetchPriceHistory,
   fetchStaleList,
   fetchStaleStations,
+  fetchStation,
   fetchStationHistory,
   fetchStationSearch,
 } from './history.functions'
@@ -23,10 +24,23 @@ export const priceHistoryQueryOptions = (input: {
     staleTime,
   })
 
-export const stationHistoryQueryOptions = (id: string) =>
+/** A station's current prices and freshness, for its card on the map. */
+export const stationQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ['history', 'station', id],
-    queryFn: () => fetchStationHistory({ data: { id } }),
+    queryFn: () => fetchStation({ data: { id } }),
+    staleTime,
+  })
+
+/** A station's prices over one range, for one fuel. */
+export const stationHistoryQueryOptions = (input: {
+  id: string
+  fuel: Fuel
+  range: Range
+}) =>
+  queryOptions({
+    queryKey: ['history', 'station-prices', input],
+    queryFn: () => fetchStationHistory({ data: input }),
     staleTime,
   })
 

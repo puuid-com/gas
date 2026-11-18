@@ -45,7 +45,7 @@ import {
   formatRelative,
   formatSignedCents,
 } from '#/lib/format'
-import { STALE_DAYS, isStale, rangeStart, unchangedDays } from '#/lib/history'
+import { STALE_DAYS, isStale, unchangedDays } from '#/lib/history'
 import {
   staleListQueryOptions,
   stationHistoryQueryOptions,
@@ -471,7 +471,9 @@ function StationHistoryView({
   fuel: Fuel
   range: Range
 }) {
-  const { data } = useSuspenseQuery(stationHistoryQueryOptions(id))
+  const { data } = useSuspenseQuery(
+    stationHistoryQueryOptions({ id, fuel, range }),
+  )
   const locale = getLocale()
   const now = useNow()
   if (!data) {
@@ -482,13 +484,13 @@ function StationHistoryView({
     )
   }
 
-  const { station, changes, first, last } = data
-  const since = rangeStart(range, last)
+  const { station, before, medians, first, last } = data
   const price = station.prices[fuel]
   const gone = station.seenAt < last
+  // Its prices going into the range, then each change within it.
+  const changes = before ? [before, ...data.changes] : data.changes
 
   // The station's price at each snapshot, beside its regional median.
-  const medians = data.regionMedians[fuel].filter((p) => p.at >= since)
   let c = -1
   const points = medians.map(({ at, median }) => {
     while (c + 1 < changes.length && changes[c + 1].at <= at) c++
@@ -497,13 +499,14 @@ function StationHistoryView({
   })
   const sold = changes.some((ch) => ch.prices[fuel] != null)
 
-  // Only the moves of the chosen fuel, newest first.
+  // Only the moves of the chosen fuel within the range, newest first.
   const moves = changes
     .map((ch, i) => ({
       at: ch.at,
       price: ch.prices[fuel],
       previous: i > 0 ? changes[i - 1].prices[fuel] : undefined,
     }))
+    .slice(before ? 1 : 0)
     .filter((mv) => mv.previous === undefined || mv.price !== mv.previous)
     .reverse()
 

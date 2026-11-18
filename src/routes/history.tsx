@@ -70,7 +70,13 @@ export const Route = createFileRoute('/history')({
       ),
       queryClient.ensureQueryData(staleListQueryOptions(deps.region)),
       deps.station &&
-        queryClient.ensureQueryData(stationHistoryQueryOptions(deps.station)),
+        queryClient.ensureQueryData(
+          stationHistoryQueryOptions({
+            id: deps.station,
+            fuel: deps.fuel,
+            range: deps.range,
+          }),
+        ),
     ]),
   head: () => ({
     meta: [{ title: `${m.history_title()} — ${m.app_name()}` }],
