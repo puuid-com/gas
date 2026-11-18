@@ -255,9 +255,13 @@ export async function getStationHistory(
       .all<Prices & { at: number }>(),
     db
       .prepare(
-        'SELECT fuel, at, median FROM region_stats WHERE region = ?1 ORDER BY at',
+        // Naming every fuel lets SQLite use the (fuel, region, at) key
+        // instead of scanning the whole table, which grows every run.
+        `SELECT fuel, at, median FROM region_stats
+         WHERE fuel IN (${FUELS.map((_, i) => `?${i + 2}`).join(', ')}) AND region = ?1
+         ORDER BY at`,
       )
-      .bind(row.region)
+      .bind(row.region, ...FUELS)
       .all<{ fuel: Fuel; at: number; median: number }>(),
     snapshotRange(db),
   ])
