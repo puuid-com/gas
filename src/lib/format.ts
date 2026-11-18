@@ -54,3 +54,49 @@ export function formatDollars(amount: number, locale: string) {
     currencyDisplay: 'narrowSymbol',
   }).format(amount)
 }
+
+/** Quebec's clock, so the server and every browser agree on dates. */
+const TIME_ZONE = 'America/Toronto'
+const dateFormats = new Map<string, Intl.DateTimeFormat>()
+
+function dateFormat(
+  locale: string,
+  key: string,
+  options: Intl.DateTimeFormatOptions,
+) {
+  const id = `${locale}|${key}`
+  let f = dateFormats.get(id)
+  if (!f) {
+    f = new Intl.DateTimeFormat(locale, { timeZone: TIME_ZONE, ...options })
+    dateFormats.set(id, f)
+  }
+  return f
+}
+
+/** Unix seconds → "17 nov." (fr) / "Nov 17" (en); adds the year when it isn't this one. */
+export function formatDay(seconds: number, locale: string, now = Date.now()) {
+  const date = new Date(seconds * 1000)
+  const thisYear =
+    dateFormat(locale, 'y', { year: 'numeric' }).format(date) ===
+    dateFormat(locale, 'y', { year: 'numeric' }).format(now)
+  return dateFormat(locale, thisYear ? 'md' : 'ymd', {
+    month: 'short',
+    day: 'numeric',
+    ...(thisYear ? {} : { year: 'numeric' }),
+  }).format(date)
+}
+
+/** Unix seconds → "17 nov., 18 h" (fr) / "Nov 17, 6 PM" (en). */
+export function formatDayTime(seconds: number, locale: string) {
+  return dateFormat(locale, 'mdh', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+  }).format(new Date(seconds * 1000))
+}
+
+/** Signed cents with unit, e.g. "+2,3 ¢" / "−1.0¢". */
+export function formatSignedCents(cents: number, locale: string) {
+  if (Math.abs(cents) < 0.05) return formatCents(0, locale)
+  return `${cents > 0 ? '+' : '−'}${formatCents(cents, locale)}`
+}

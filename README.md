@@ -38,6 +38,16 @@ refreshed every few minutes).
   Google Maps or Apple Maps. On a trip, Google Maps and Apple Maps get the
   station as a stop on the way to the destination; Waze links take one
   destination, so they go to the station.
+- **Price history** — a Worker cron saves every station's prices twice a day
+  (6 AM and 6 PM, Quebec winter time) to D1. The history page (`/history`, also
+  in the menu and on each station) charts the median for Quebec or a region,
+  compares regions over 7 days to a year, and shows any station's prices
+  against its regional median with every change.
+- **Probably not updated** — a station whose prices haven't changed in 7 days
+  (`STALE_DAYS` in `src/lib/history.ts`) is flagged in the list, on its card
+  and on the history page, and its low price is no longer highlighted. The feed
+  has no per-station timestamp, so this needs the saved history: nothing is
+  flagged until a week after the first snapshot.
 - French (default) and English, light and dark themes, installable to the home
   screen.
 
@@ -58,14 +68,31 @@ TanStack Start (React 19, file routes, Cloudflare Workers), TanStack Query
 shadcn/ui + Tailwind 4, Paraglide (i18n), Vitest.
 
 The browser fetches the feed directly: it is CDN-cached and CORS-enabled, so
-there is no server proxy.
+there is no server proxy. Only the history goes through the Worker (TanStack
+Start server functions over D1).
+
+## Price history
+
+- `wrangler.jsonc` — the `DB` D1 binding (`gas-history`) and the cron
+  (`0 11,23 * * *` UTC).
+- `migrations/` — the schema. `snapshots` has one row per run, `stations` each
+  station's current prices and when they last changed, `price_changes` a row
+  only when a station's prices differ from its previous snapshot, and
+  `region_stats` the spread per fuel and region at each run.
+- `bun run deploy` applies new migrations before deploying.
+- To take a snapshot outside the schedule (seed a new database, fill a missed
+  run), set a Worker secret once with `wrangler secret put SNAPSHOT_TOKEN`,
+  then `curl -X POST -H "Authorization: Bearer <token>" https://gas.odeschenes.dev/api/snapshot`.
+  Without the secret the endpoint doesn't exist.
 
 ## Develop
 
 ```bash
 bun install
 bun run dev        # http://localhost:3000
-bun run test       # unit tests (normalization, pricing, geo)
+bun run db:migrate:local  # once, and after adding a migration
+bun run cf-typegen        # Worker types, after changing wrangler.jsonc
+bun run test       # unit tests (normalization, pricing, geo, history)
 bun run lint
 bun run build
 ```
@@ -81,6 +108,10 @@ tunnel.
   ranking
 - `src/lib/geo.ts` — distances, bearings, route indexing and projection
 - `src/lib/places.ts`, `src/lib/routing.ts` — place search and driving routes
+- `src/lib/history.ts` — staleness rule, region stats, history types
+- `src/server/history.ts` — D1 snapshot job and history queries; exposed as
+  server functions in `src/lib/history.functions.ts`
+- `src/routes/history.tsx`, `src/components/history/` — the history page
 - `src/hooks/use-trip.ts` — the trip in the URL, its route and corridor
 - `src/stores/location.ts` — live position, drive mode, follow, radius
 - `src/stores/trip.ts` — corridor width, trip start

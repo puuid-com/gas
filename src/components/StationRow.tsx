@@ -1,3 +1,5 @@
+import { IconClockExclamation } from '@tabler/icons-react'
+import { useStaleDays } from '#/components/StaleMark'
 import { Button } from '#/components/ui/button'
 import { RegionStar, TierBar } from '#/components/TierMark'
 import { formatDistance } from '#/lib/geo'
@@ -36,6 +38,9 @@ export function StationRow({
   className,
 }: StationRowProps) {
   const locale = getLocale()
+  // A price that hasn't moved in a week is probably wrong: don't sell it as cheap.
+  const staleDays = useStaleDays(station.id)
+  const stale = staleDays != null
 
   return (
     <Button
@@ -52,6 +57,16 @@ export function StationRow({
         <div className="flex items-center gap-1.5 text-sm font-medium">
           <span className="truncate">{stationTitle(station)}</span>
           {star && <RegionStar />}
+          {stale && (
+            <span
+              className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-warning tabular-nums"
+              title={m.stale_title()}
+            >
+              <IconClockExclamation aria-hidden className="size-3.5" />
+              {m.stale_days({ days: staleDays })}
+              <span className="sr-only">{m.stale_title()}</span>
+            </span>
+          )}
         </div>
         <div className="truncate text-xs text-muted-foreground">
           {subtitle ?? (station.city || station.address)}
@@ -62,8 +77,9 @@ export function StationRow({
           className={cn(
             'text-2xl leading-none font-semibold tracking-tight tabular-nums',
             // The low prices are the ones worth finding: fill them in.
-            tier === 0 && 'bg-tier-0 px-1.5 py-1 text-tier-0-fg',
-            tier === 1 && 'bg-tier-1 px-1.5 py-1 text-tier-1-fg',
+            !stale && tier === 0 && 'bg-tier-0 px-1.5 py-1 text-tier-0-fg',
+            !stale && tier === 1 && 'bg-tier-1 px-1.5 py-1 text-tier-1-fg',
+            stale && 'text-muted-foreground',
             price == null && 'text-sm font-normal text-muted-foreground',
           )}
         >

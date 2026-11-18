@@ -45,6 +45,10 @@
   --map-highway-casing: #b4b4b4;
   --map-highway-far: #c2c2c2;
   --user: #0a72ef;
+  /* Prices that are probably out of date. */
+  --warning: #b45309;
+  /* History charts: the subject line; comparisons use muted-foreground. */
+  --chart-line: #0a72ef;
 }
 
 .dark {
@@ -82,6 +86,8 @@
   --map-highway-casing: #737373;
   --map-highway-far: #4a4a4a;
   --user: #3b9bff;
+  --warning: #f5b544;
+  --chart-line: #2f8cf5;
 }
 
 @theme inline {
@@ -116,6 +122,8 @@
   --color-tier-4: var(--tier-4);
   --color-tier-none: var(--tier-none);
   --color-user: var(--user);
+  --color-warning: var(--warning);
+  --color-chart-line: var(--chart-line);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

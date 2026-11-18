@@ -1,5 +1,7 @@
 import { IconX } from '@tabler/icons-react'
 import { DirectionsButton } from '#/components/DirectionsButton'
+import { StaleTag, useStaleDays } from '#/components/StaleMark'
+import { StationFreshness } from '#/components/StationFreshness'
 import { RegionStar, TierBar } from '#/components/TierMark'
 import { Button } from '#/components/ui/button'
 import { useSelector } from '@tanstack/react-store'
@@ -31,6 +33,7 @@ export function StationDetail({
   const fix = useSelector(locationStore, (s) => s.fix)
   const driving = useSelector(locationStore, (s) => s.driving)
   const trip = useTrip()
+  const staleDays = useStaleDays(id)
 
   const station = byId.get(id)
   // Its place on the trip, when it's in the corridor.
@@ -88,9 +91,15 @@ export function StationDetail({
           <p className="text-sm text-muted-foreground">
             {fuelLabel(fuel)} · ¢/L
           </p>
-          <p className="text-3xl font-semibold tabular-nums tracking-tight">
+          <p
+            className={cn(
+              'text-3xl font-semibold tabular-nums tracking-tight',
+              staleDays != null && 'text-muted-foreground',
+            )}
+          >
             {price == null ? m.unavailable() : formatPrice(price, locale)}
           </p>
+          {staleDays != null && <StaleTag days={staleDays} />}
         </div>
       </div>
       <DirectionsButton
@@ -215,6 +224,7 @@ export function StationDetail({
               </div>
             </div>
           )}
+          <StationFreshness id={id} fuel={fuel} />
           {children}
           <DirectionsButton
             to={station}

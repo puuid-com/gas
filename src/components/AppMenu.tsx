@@ -1,5 +1,6 @@
 import { IconDots } from '@tabler/icons-react'
 import { useSelector } from '@tanstack/react-store'
+import { Link } from '@tanstack/react-router'
 import { Button } from '#/components/ui/button'
 import {
   DropdownMenu,
@@ -81,13 +82,16 @@ export function AppMenu({
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />
         {onPlanTrip && (
-          <>
-            <DropdownMenuItem onSelect={onPlanTrip}>
-              {m.trip_plan()}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
+          <DropdownMenuItem onSelect={onPlanTrip}>
+            {m.trip_plan()}
+          </DropdownMenuItem>
         )}
+        <DropdownMenuItem asChild>
+          <Link to="/history" search={{ fuel }}>
+            {m.price_history()}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuLabel>{m.directions_app()}</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={navApp}
