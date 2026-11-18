@@ -142,7 +142,7 @@
   "history_tracking": "Saved twice a day since {date} · {count} snapshots",
   "history_caption": "Median price at each snapshot.",
   "history_caption_region": "Median price at each snapshot. Dashed: Quebec median.",
-  "history_empty": "No snapshots yet. Prices are saved twice a day, at 6 a.m. and 6 p.m.",
+  "history_empty": "No snapshots yet. Prices are saved twice a day, at 10 a.m. and 10 p.m.",
   "history_short": "Trends appear after a few snapshots. Prices are saved twice a day.",
   "history_range": "Period",
   "range_1w": "7 days",

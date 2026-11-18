@@ -142,7 +142,7 @@
   "history_tracking": "Enregistrés deux fois par jour depuis le {date} · {count} relevés",
   "history_caption": "Prix médian à chaque relevé.",
   "history_caption_region": "Prix médian à chaque relevé. Pointillé : médiane du Québec.",
-  "history_empty": "Aucun relevé pour l'instant. Les prix sont enregistrés deux fois par jour, à 6 h et à 18 h.",
+  "history_empty": "Aucun relevé pour l'instant. Les prix sont enregistrés deux fois par jour, à 10 h et à 22 h.",
   "history_short": "Les tendances apparaissent après quelques relevés. Les prix sont enregistrés deux fois par jour.",
   "history_range": "Période",
   "range_1w": "7 jours",

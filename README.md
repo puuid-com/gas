@@ -39,7 +39,7 @@ refreshed every few minutes).
   station as a stop on the way to the destination; Waze links take one
   destination, so they go to the station.
 - **Price history** — a Worker cron saves every station's prices twice a day
-  (6 AM and 6 PM, Quebec winter time) to D1. The history page (`/history`, also
+  (10 AM, the daytime price, and 10 PM, after the evening price cuts) to D1. The history page (`/history`, also
   in the menu and on each station) charts the median for Quebec or a region,
   compares regions over 7 days to a year, and shows any station's prices
   against its regional median with every change.
@@ -74,7 +74,9 @@ Start server functions over D1).
 ## Price history
 
 - `wrangler.jsonc` — the `DB` D1 binding (`gas-history`) and the cron
-  (`0 11,23 * * *` UTC).
+  (`0 2,3,14,15 * * *` UTC: 10 AM and 10 PM in both winter and summer
+  time; `isSnapshotHour` skips the two firings that aren't 10 o'clock in
+  Quebec).
 - `migrations/` — the schema. `snapshots` has one row per run, `stations` each
   station's current prices and when they last changed, `price_changes` a row
   only when a station's prices differ from its previous snapshot, and

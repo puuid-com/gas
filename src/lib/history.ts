@@ -11,6 +11,23 @@ export const DAY = 86_400
  */
 export const STALE_DAYS = 7
 
+/**
+ * Snapshots are taken at these hours, Quebec time: the daytime price, after
+ * the overnight increases, and the evening low, after stations cut prices.
+ */
+export const SNAPSHOT_HOURS = [10, 22]
+
+const quebecHour = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Toronto',
+  hour: 'numeric',
+  hourCycle: 'h23',
+})
+
+/** Whether a cron firing (ms) falls on a snapshot hour in Quebec, DST included. */
+export function isSnapshotHour(ms: number) {
+  return SNAPSHOT_HOURS.includes(Number(quebecHour.format(ms)))
+}
+
 /** Region key for province-wide stats. */
 export const QUEBEC = ''
 

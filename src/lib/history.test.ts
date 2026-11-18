@@ -3,6 +3,7 @@ import {
   DAY,
   QUEBEC,
   computeRegionStats,
+  isSnapshotHour,
   isStale,
   rangeStart,
   samePrices,
@@ -96,5 +97,23 @@ describe('computeRegionStats', () => {
     expect(find('diesel', 'A')).toMatchObject({ count: 1, median: 200 })
     expect(find('diesel', 'B')).toBeUndefined()
     expect(find('super', QUEBEC)).toBeUndefined()
+  })
+})
+
+describe('isSnapshotHour', () => {
+  const at = (iso: string) => Date.parse(iso)
+
+  it('runs at 10 AM and 10 PM Quebec time in winter', () => {
+    expect(isSnapshotHour(at('2026-11-18T15:00:00Z'))).toBe(true)
+    expect(isSnapshotHour(at('2026-11-19T03:00:00Z'))).toBe(true)
+    expect(isSnapshotHour(at('2026-11-18T14:00:00Z'))).toBe(false)
+    expect(isSnapshotHour(at('2026-11-19T02:00:00Z'))).toBe(false)
+  })
+
+  it('and in summer time', () => {
+    expect(isSnapshotHour(at('2026-07-15T14:00:00Z'))).toBe(true)
+    expect(isSnapshotHour(at('2026-07-16T02:00:00Z'))).toBe(true)
+    expect(isSnapshotHour(at('2026-07-15T15:00:00Z'))).toBe(false)
+    expect(isSnapshotHour(at('2026-07-16T03:00:00Z'))).toBe(false)
   })
 })

@@ -8,9 +8,10 @@
     { "pattern": "gas.odeschenes.dev", "custom_domain": true },
     { "pattern": "gas.puuid.com", "custom_domain": true },
   ],
-  // Price history: one snapshot of the Régie feed twice a day (UTC; 6 AM and
-  // 6 PM in Quebec winter time, 7 AM and 7 PM in summer).
-  "triggers": { "crons": ["0 11,23 * * *"] },
+  // Price history: a snapshot of the Régie feed at 10 AM and 10 PM Quebec
+  // time. Crons run in UTC, so this fires at both the winter and summer UTC
+  // hours and the job skips the two that aren't 10 o'clock in Quebec.
+  "triggers": { "crons": ["0 2,3,14,15 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",
