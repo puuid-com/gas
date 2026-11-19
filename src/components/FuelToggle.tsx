@@ -50,7 +50,9 @@ export function FuelToggleGroup({
           key={f}
           value={f}
           className={cn(
-            'h-9 flex-1 text-[13px] data-[state=on]:bg-foreground data-[state=on]:text-background',
+            // The dark variant keeps the selected fill over a caller's
+            // `dark:bg-background` (the map's floating toggle sets one).
+            'h-9 flex-1 text-[13px] data-[state=on]:bg-foreground data-[state=on]:text-background dark:data-[state=on]:bg-foreground',
             itemClassName,
           )}
         >
