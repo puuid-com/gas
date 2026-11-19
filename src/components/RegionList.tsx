@@ -20,7 +20,8 @@ export function RegionList() {
   const locale = getLocale()
   const province = stats.province
 
-  if (!province) return <p className="p-4 text-sm text-muted-foreground">{m.no_results()}</p>
+  if (!province)
+    return <p className="p-4 text-sm text-muted-foreground">{m.no_results()}</p>
 
   const lo = province.min
   const hi = province.max
@@ -43,7 +44,10 @@ export function RegionList() {
               selected={r.region === selected}
               locale={locale}
               onSelect={() =>
-                setSearch({ region: r.region, station: undefined, view: 'map' }, { push: true })
+                setSearch(
+                  { region: r.region, station: undefined, view: 'map' },
+                  { push: true },
+                )
               }
             />
           </li>
@@ -107,7 +111,9 @@ function RegionRow({
       )}
     >
       <div className="flex items-baseline gap-3">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{stat.region}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {stat.region}
+        </span>
         <span className="text-lg leading-none font-semibold tracking-tight tabular-nums">
           {formatPrice(stat.min, locale)}
         </span>
@@ -136,7 +142,9 @@ function RegionRow({
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <RegionStar />
         <span className="min-w-0 flex-1 truncate">
-          {cheapest ? `${stationTitle(cheapest)}${cheapest.city ? `, ${cheapest.city}` : ''}` : '—'}
+          {cheapest
+            ? `${stationTitle(cheapest)}${cheapest.city ? `, ${cheapest.city}` : ''}`
+            : '—'}
           {ties > 0 && ` +${ties}`}
         </span>
         <span className="shrink-0 tabular-nums">

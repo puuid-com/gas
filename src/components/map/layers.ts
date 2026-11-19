@@ -18,7 +18,7 @@ export const INTERACTIVE_LAYERS = [
 
 const FONT = ['Noto Sans Bold']
 /** Labels take over from bare dots from this zoom. */
-export const LABEL_MINZOOM = 10
+const LABEL_MINZOOM = 10
 
 type Circle = Omit<CircleLayerSpecification, 'source'>
 type Symbol = Omit<SymbolLayerSpecification, 'source'>

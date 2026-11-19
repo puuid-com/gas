@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/knip/schema.json",
+  "entry": [
+    "src/routes/**/*.{ts,tsx}",
+    "src/components/ui/*.tsx",
+    "src/components/changelog/kit.tsx"
+  ],
+  "project": ["src/**/*.{ts,tsx,css}"],
+  "ignoreDependencies": ["@tanstack/devtools-event-client"]
+}

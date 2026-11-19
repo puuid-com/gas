@@ -101,6 +101,7 @@ describe('drive detection', () => {
 
   it('ignores fast jumps between coarse positions', () => {
     const driving = createDriveDetector()
-    for (let i = 0; i < 5; i++) expect(driving(fix(i * 50, 40, 800))).toBe(false)
+    for (let i = 0; i < 5; i++)
+      expect(driving(fix(i * 50, 40, 800))).toBe(false)
   })
 })

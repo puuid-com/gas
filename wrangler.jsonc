@@ -5,8 +5,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
   "routes": [
-    { "pattern": "gas.odeschenes.dev", "custom_domain": true },
     { "pattern": "gas.puuid.com", "custom_domain": true },
+    // Served by the same Worker, which 301s it to gas.puuid.com (src/server.ts).
+    { "pattern": "gas.odeschenes.dev", "custom_domain": true },
   ],
   // Price history: a snapshot of the Régie feed at 10 AM and 10 PM Quebec
   // time. Crons run in UTC, so this fires at both the winter and summer UTC

@@ -54,7 +54,9 @@ export function boundsOf(points: Iterable<LngLat>): Bounds | null {
 }
 
 export function inBounds(p: LngLat, b: Bounds) {
-  return p.lng >= b[0][0] && p.lng <= b[1][0] && p.lat >= b[0][1] && p.lat <= b[1][1]
+  return (
+    p.lng >= b[0][0] && p.lng <= b[1][0] && p.lat >= b[0][1] && p.lat <= b[1][1]
+  )
 }
 
 /** "46.81390,-71.20820" — compact and readable in URLs. */
@@ -103,7 +105,9 @@ export function indexRoute(coords: ReadonlyArray<[number, number]>): RouteLine {
   for (let i = 1; i < coords.length; i++) {
     const [aLng, aLat] = coords[i - 1]
     const [bLng, bLat] = coords[i]
-    cumKm[i] = cumKm[i - 1] + distanceKm({ lng: aLng, lat: aLat }, { lng: bLng, lat: bLat })
+    cumKm[i] =
+      cumKm[i - 1] +
+      distanceKm({ lng: aLng, lat: aLat }, { lng: bLng, lat: bLat })
   }
 
   const chunks: Array<Chunk> = []
@@ -160,7 +164,8 @@ export function locateOnRoute(
       const dx = (line.coords[i + 1][0] - p.lng) * kx - ax
       const dy = (line.coords[i + 1][1] - p.lat) * ky - ay
       const lenSq = dx * dx + dy * dy
-      const t = lenSq > 0 ? Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lenSq)) : 0
+      const t =
+        lenSq > 0 ? Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lenSq)) : 0
       const cx = ax + t * dx
       const cy = ay + t * dy
       const distSq = cx * cx + cy * cy

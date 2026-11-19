@@ -46,7 +46,11 @@ export function LocateButton() {
         }
       }}
     >
-      {locating ? <IconLoader2 className="animate-spin" /> : <IconCurrentLocation />}
+      {locating ? (
+        <IconLoader2 className="animate-spin" />
+      ) : (
+        <IconCurrentLocation />
+      )}
     </Button>
   )
 }

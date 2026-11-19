@@ -60,8 +60,6 @@ const upstreamSchema = z.object({
   ),
 })
 
-export type UpstreamStations = z.input<typeof upstreamSchema>
-
 /** "199.4¢" → 199.4 */
 export function parsePrice(raw: string | null | undefined): number | null {
   if (!raw) return null
@@ -78,7 +76,18 @@ function slugify(value: string) {
     .replace(/^-|-$/g, '')
 }
 
-const PARTICLES = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'sur', 'en', 'aux', 'et'])
+const PARTICLES = new Set([
+  'de',
+  'du',
+  'des',
+  'la',
+  'le',
+  'les',
+  'sur',
+  'en',
+  'aux',
+  'et',
+])
 
 /** "SAINT-JEAN-SUR-RICHELIEU" → "Saint-Jean-sur-Richelieu"; mixed case is kept. */
 function tidyCase(value: string) {
@@ -86,7 +95,9 @@ function tidyCase(value: string) {
   return value
     .toLowerCase()
     .replace(/\p{L}+/gu, (word, offset: number) =>
-      offset > 0 && PARTICLES.has(word) ? word : word[0].toUpperCase() + word.slice(1),
+      offset > 0 && PARTICLES.has(word)
+        ? word
+        : word[0].toUpperCase() + word.slice(1),
     )
 }
 
@@ -120,10 +131,15 @@ export function normalizeStations(input: unknown): StationsData {
     for (let n = 2; seen.has(id); n++) id = `${id}-${n}`
     seen.add(id)
 
-    const prices: Station['prices'] = { regular: null, super: null, diesel: null }
+    const prices: Station['prices'] = {
+      regular: null,
+      super: null,
+      diesel: null,
+    }
     for (const entry of p.Prices ?? []) {
       const fuel = GAS_TYPES[entry.GasType]
-      if (fuel && entry.IsAvailable !== false) prices[fuel] = parsePrice(entry.Price)
+      if (fuel && entry.IsAvailable !== false)
+        prices[fuel] = parsePrice(entry.Price)
     }
 
     const comma = address.lastIndexOf(',')
@@ -149,7 +165,9 @@ async function readJson(res: Response): Promise<unknown> {
   // The blob is normally served with `content-encoding: gzip` and decoded by
   // fetch; fall back to manual decompression if it ever arrives raw.
   if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+    const stream = new Blob([bytes])
+      .stream()
+      .pipeThrough(new DecompressionStream('gzip'))
     return new Response(stream).json()
   }
   return JSON.parse(new TextDecoder().decode(bytes))
@@ -159,7 +177,9 @@ async function readJson(res: Response): Promise<unknown> {
  * The Régie serves the feed from a CDN with open CORS and a 60 s cache, so
  * the browser fetches it directly.
  */
-export async function fetchStations(signal?: AbortSignal): Promise<StationsData> {
+export async function fetchStations(
+  signal?: AbortSignal,
+): Promise<StationsData> {
   const res = await fetch(SOURCE_URL, { signal })
   if (!res.ok) throw new Error(`Price feed responded ${res.status}`)
   return normalizeStations(await readJson(res))

@@ -6,7 +6,7 @@ import { prefsStore } from '#/stores/prefs'
 import type { FuelStats } from '#/lib/pricing'
 import type { Fuel, Station, StationsData } from '#/lib/stations'
 
-export interface IndexedStations extends StationsData {
+interface IndexedStations extends StationsData {
   byId: Map<string, Station>
 }
 

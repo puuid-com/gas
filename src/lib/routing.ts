@@ -37,7 +37,11 @@ const osrmSchema = z.object({
 
 const point = ({ lng, lat }: LngLat) => `${lng.toFixed(5)},${lat.toFixed(5)}`
 
-export async function fetchRoute(from: LngLat, to: LngLat, signal?: AbortSignal): Promise<Route> {
+export async function fetchRoute(
+  from: LngLat,
+  to: LngLat,
+  signal?: AbortSignal,
+): Promise<Route> {
   const url = new URL(`${OSRM_URL}${point(from)};${point(to)}`)
   url.searchParams.set('overview', 'full')
   url.searchParams.set('geometries', 'geojson')
@@ -79,7 +83,9 @@ export async function fetchDetours(
   const n = stops.length
   const range = (start: number, count: number) =>
     Array.from({ length: count }, (_, i) => start + i).join(';')
-  const url = new URL(`${OSRM_TABLE_URL}${[from, ...stops, to].map(point).join(';')}`)
+  const url = new URL(
+    `${OSRM_TABLE_URL}${[from, ...stops, to].map(point).join(';')}`,
+  )
   // Rows: the start, then each stop. Columns: each stop, then the destination.
   url.searchParams.set('sources', range(0, n + 1))
   url.searchParams.set('destinations', range(1, n + 1))
@@ -87,7 +93,8 @@ export async function fetchDetours(
 
   const res = await fetch(url, { signal })
   const body = tableSchema.safeParse(await res.json().catch(() => null))
-  const durations = body.success && body.data.code === 'Ok' ? body.data.durations : undefined
+  const durations =
+    body.success && body.data.code === 'Ok' ? body.data.durations : undefined
   if (!durations) throw new RouteError('failed')
 
   const direct = durations[0][n]

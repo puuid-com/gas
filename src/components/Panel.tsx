@@ -7,6 +7,8 @@ import { useNow } from '#/hooks/use-now'
 import { useStations } from '#/hooks/use-stations'
 import { formatRelative } from '#/lib/format'
 import { SOURCE_URL } from '#/lib/stations'
+import { appVersion } from '#/lib/version'
+import { Link } from '@tanstack/react-router'
 import { getLocale } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
 
@@ -23,7 +25,10 @@ export function Panel() {
       onValueChange={(value) => setSearch({ tab: value as typeof tab })}
       className="min-h-0 flex-1 gap-0"
     >
-      <TabsList variant="line" className="w-full justify-start gap-4 border-b px-3">
+      <TabsList
+        variant="line"
+        className="w-full justify-start gap-4 border-b px-3"
+      >
         <TabsTrigger value="stations" className="flex-none px-0 text-[13px]">
           {m.tab_stations()}
         </TabsTrigger>
@@ -34,13 +39,22 @@ export function Panel() {
           {m.tab_regions()}
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="stations" className="flex min-h-0 flex-col data-[state=inactive]:hidden">
+      <TabsContent
+        value="stations"
+        className="flex min-h-0 flex-col data-[state=inactive]:hidden"
+      >
         <StationList />
       </TabsContent>
-      <TabsContent value="trip" className="flex min-h-0 flex-col data-[state=inactive]:hidden">
+      <TabsContent
+        value="trip"
+        className="flex min-h-0 flex-col data-[state=inactive]:hidden"
+      >
         <TripPanel />
       </TabsContent>
-      <TabsContent value="regions" className="flex min-h-0 flex-col data-[state=inactive]:hidden">
+      <TabsContent
+        value="regions"
+        className="flex min-h-0 flex-col data-[state=inactive]:hidden"
+      >
         <RegionList />
       </TabsContent>
       <footer className="flex flex-wrap gap-x-3 border-t px-3 py-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] text-[11px] text-muted-foreground lg:pb-2">
@@ -57,6 +71,13 @@ export function Panel() {
             time: formatRelative(new Date(generatedAt), getLocale(), now),
           })}
         </span>
+        <Link
+          to="/changelog"
+          aria-label={m.app_version_label({ version: appVersion })}
+          className="font-mono tabular-nums hover:text-foreground"
+        >
+          {m.app_version({ version: appVersion })}
+        </Link>
       </footer>
     </Tabs>
   )

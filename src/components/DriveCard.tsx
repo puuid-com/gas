@@ -127,7 +127,9 @@ export function DriveCard({ collapsed = false }: { collapsed?: boolean }) {
             />
             {decision.other && (
               <StopTile
-                stop={decision.verdict === 'go' ? decision.pick : decision.other}
+                stop={
+                  decision.verdict === 'go' ? decision.pick : decision.other
+                }
                 label={
                   decision.verdict === 'go'
                     ? m.drive_best()

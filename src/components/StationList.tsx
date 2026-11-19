@@ -14,7 +14,11 @@ import {
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { rankItem, rankings } from '@tanstack/match-sorter-utils'
 import { IconSearch } from '@tabler/icons-react'
-import type { ColumnFiltersState, FilterFn, SortingState } from '@tanstack/react-table'
+import type {
+  ColumnFiltersState,
+  FilterFn,
+  SortingState,
+} from '@tanstack/react-table'
 
 import { StationRow } from '#/components/StationRow'
 import { Input } from '#/components/ui/input'
@@ -50,7 +54,10 @@ const allWords: FilterFn<any, any> = (row, columnId, value: string) => {
   return value
     .trim()
     .split(/\s+/)
-    .every((word) => rankItem(haystack, word, { threshold: rankings.CONTAINS }).passed)
+    .every(
+      (word) =>
+        rankItem(haystack, word, { threshold: rankings.CONTAINS }).passed,
+    )
 }
 
 const features = tableFeatures({
@@ -64,8 +71,14 @@ const features = tableFeatures({
 
 const helper = createColumnHelper<typeof features, ListRow>()
 const columns = helper.columns([
-  helper.accessor('price', { sortUndefined: 'last', enableGlobalFilter: false }),
-  helper.accessor('distance', { sortUndefined: 'last', enableGlobalFilter: false }),
+  helper.accessor('price', {
+    sortUndefined: 'last',
+    enableGlobalFilter: false,
+  }),
+  helper.accessor('distance', {
+    sortUndefined: 'last',
+    enableGlobalFilter: false,
+  }),
   helper.accessor('region', { filterFn: 'equals', enableGlobalFilter: false }),
   helper.accessor('search', { enableGlobalFilter: true }),
 ])
@@ -122,12 +135,17 @@ export function StationList() {
     [region],
   )
 
-  const effectiveSort: SortKey = sort === 'distance' && fix ? 'distance' : 'price'
+  const effectiveSort: SortKey =
+    sort === 'distance' && fix ? 'distance' : 'price'
   const table = useTable({
     features,
     columns,
     data,
-    state: { sorting: SORTS[effectiveSort], globalFilter: query, columnFilters },
+    state: {
+      sorting: SORTS[effectiveSort],
+      globalFilter: query,
+      columnFilters,
+    },
     globalFilterFn: 'allWords',
     getRowId: (row) => row.station.id,
   })
@@ -141,7 +159,9 @@ export function StationList() {
     overscan: 8,
   })
 
-  const regionNames = [...stats.byRegion.keys()].sort((a, b) => a.localeCompare(b, getLocale()))
+  const regionNames = [...stats.byRegion.keys()].sort((a, b) =>
+    a.localeCompare(b, getLocale()),
+  )
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -181,7 +201,9 @@ export function StationList() {
           </ToggleGroup>
           <Select
             value={region ?? ALL}
-            onValueChange={(value) => setSearch({ region: value === ALL ? undefined : value })}
+            onValueChange={(value) =>
+              setSearch({ region: value === ALL ? undefined : value })
+            }
           >
             <SelectTrigger size="sm" className="h-8 min-w-0 flex-1">
               <SelectValue />
@@ -201,11 +223,17 @@ export function StationList() {
         </p>
       </div>
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
         {rows.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">{m.no_results()}</p>
         ) : (
-          <div className="relative" style={{ height: virtualizer.getTotalSize() }}>
+          <div
+            className="relative"
+            style={{ height: virtualizer.getTotalSize() }}
+          >
             {virtualizer.getVirtualItems().map((item) => {
               const row = rows[item.index].original
               return (
@@ -223,7 +251,9 @@ export function StationList() {
                     star={stats.ranks.get(row.station.id)?.regionCheapest}
                     distanceKm={row.distance ?? null}
                     onSelect={(id) => setSearch({ station: id, view: 'map' })}
-                    className={row.station.id === selected ? 'bg-muted' : undefined}
+                    className={
+                      row.station.id === selected ? 'bg-muted' : undefined
+                    }
                   />
                 </div>
               )

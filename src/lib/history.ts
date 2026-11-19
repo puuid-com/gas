@@ -15,7 +15,7 @@ export const STALE_DAYS = 7
  * Snapshots are taken at these hours, Quebec time: the daytime price, after
  * the overnight increases, and the evening low, after stations cut prices.
  */
-export const SNAPSHOT_HOURS = [10, 22]
+const SNAPSHOT_HOURS = [10, 22]
 
 const quebecHour = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Toronto',
@@ -126,7 +126,7 @@ export function computeRegionStats(
 
 /** Shapes returned by the history server functions. */
 
-export interface HistoryPoint {
+interface HistoryPoint {
   at: number
   median: number
   min: number
@@ -137,7 +137,7 @@ export interface HistoryPoint {
   quebec: number | null
 }
 
-export interface RegionSummary {
+interface RegionSummary {
   region: string
   count: number
   median: number
@@ -167,7 +167,7 @@ export interface StationRecord {
   seenAt: number
 }
 
-export interface PriceChange {
+interface PriceChange {
   at: number
   prices: Prices
 }

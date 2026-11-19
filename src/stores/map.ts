@@ -9,8 +9,8 @@ export interface PinnedPlace extends LngLat {
 }
 
 /** Wide-screen chrome: the floating list on the left, the card on the right. */
-export const PANEL_WIDTH = 400
-export const CARD_WIDTH = 384
+const PANEL_WIDTH = 400
+const CARD_WIDTH = 384
 const EDGE = 16
 
 const PANEL_KEY = 'plein:panel'

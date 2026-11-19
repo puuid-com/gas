@@ -2,8 +2,16 @@ import type { Map as MapLibreMap } from 'maplibre-gl'
 import { INTERACTIVE_LAYERS } from './layers'
 
 const LINE_LAYERS = {
-  inner: ['highway_motorway_inner', 'highway_motorway_bridge_inner', 'tunnel_motorway_inner'],
-  casing: ['highway_motorway_casing', 'highway_motorway_bridge_casing', 'tunnel_motorway_casing'],
+  inner: [
+    'highway_motorway_inner',
+    'highway_motorway_bridge_inner',
+    'tunnel_motorway_inner',
+  ],
+  casing: [
+    'highway_motorway_casing',
+    'highway_motorway_bridge_casing',
+    'tunnel_motorway_casing',
+  ],
   subtle: ['highway_motorway_subtle'],
 }
 
@@ -27,7 +35,12 @@ export function styleHighways(map: MapLibreMap) {
   }
   for (const [kind, ids] of Object.entries(LINE_LAYERS)) {
     for (const id of ids) {
-      if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', colors[kind as keyof typeof colors])
+      if (map.getLayer(id))
+        map.setPaintProperty(
+          id,
+          'line-color',
+          colors[kind as keyof typeof colors],
+        )
     }
   }
   for (const id of REF_LAYERS) {
@@ -51,7 +64,13 @@ export function styleHighways(map: MapLibreMap) {
       filter: [
         'all',
         ['==', ['get', 'class'], 'motorway'],
-        ['match', ['get', 'network'], ['ca-provincial-arterial', 'ca-transcanada'], true, false],
+        [
+          'match',
+          ['get', 'network'],
+          ['ca-provincial-arterial', 'ca-transcanada'],
+          true,
+          false,
+        ],
         ['<=', ['get', 'ref_length'], 4],
       ],
       layout: {
@@ -104,7 +123,12 @@ function drawShield(pixelRatio = 2) {
       // Stretch only the blue body so the crown keeps its height.
       stretchX: [[r, w - r]] as Array<[number, number]>,
       stretchY: [[edge + band + u, h - r]] as Array<[number, number]>,
-      content: [r, edge + band, w - r, h - edge] as [number, number, number, number],
+      content: [r, edge + band, w - r, h - edge] as [
+        number,
+        number,
+        number,
+        number,
+      ],
     },
   }
 }

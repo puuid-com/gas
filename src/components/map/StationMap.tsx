@@ -101,7 +101,8 @@ function driveZoom(
     // North-up: the station could be anywhere around the car.
     metresPerPx = metres / Math.min(ahead, behind, side)
   } else {
-    const off = (angleDiff(fix.heading, bearingDeg(fix, target)) * Math.PI) / 180
+    const off =
+      (angleDiff(fix.heading, bearingDeg(fix, target)) * Math.PI) / 180
     metresPerPx = Math.max(
       (metres * Math.cos(off)) / ahead,
       (metres * -Math.cos(off)) / behind,

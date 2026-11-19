@@ -21,6 +21,7 @@ import type { Fuel } from '#/lib/stations'
 import { useNow } from '#/hooks/use-now'
 import { useStations } from '#/hooks/use-stations'
 import { formatRelative } from '#/lib/format'
+import { appVersion } from '#/lib/version'
 import { prefsStore, setCostco, setNavApp } from '#/stores/prefs'
 import { setThemePreference, themeStore } from '#/stores/theme'
 import { getLocale, setLocale } from '#/paraglide/runtime'
@@ -139,6 +140,14 @@ export function AppMenu({
             time: formatRelative(new Date(generatedAt), getLocale(), now),
           })}
         </DropdownMenuLabel>
+        <DropdownMenuItem asChild className="font-mono text-xs tabular-nums">
+          <Link
+            to="/changelog"
+            aria-label={m.app_version_label({ version: appVersion })}
+          >
+            {m.app_version({ version: appVersion })}
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

@@ -84,7 +84,7 @@ Start server functions over D1).
 - `bun run deploy` applies new migrations before deploying.
 - To take a snapshot outside the schedule (seed a new database, fill a missed
   run), set a Worker secret once with `wrangler secret put SNAPSHOT_TOKEN`,
-  then `curl -X POST -H "Authorization: Bearer <token>" https://gas.odeschenes.dev/api/snapshot`.
+  then `curl -X POST -H "Authorization: Bearer <token>" https://gas.puuid.com/api/snapshot`.
   Without the secret the endpoint doesn't exist.
 
 ## Develop

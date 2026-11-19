@@ -20,6 +20,8 @@ describe('directionsUrl', () => {
   })
 
   it("falls back to the station where stops aren't supported", () => {
-    expect(directionsUrl('waze', station, destination)).toBe(directionsUrl('waze', station))
+    expect(directionsUrl('waze', station, destination)).toBe(
+      directionsUrl('waze', station),
+    )
   })
 })

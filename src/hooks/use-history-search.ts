@@ -1,7 +1,7 @@
 import { getRouteApi } from '@tanstack/react-router'
-import type { HistorySearch } from '#/routes/history'
+import type { HistorySearch } from '#/routes/_site/history'
 
-const historyRoute = getRouteApi('/history')
+const historyRoute = getRouteApi('/_site/history')
 
 export function useHistorySearch() {
   return historyRoute.useSearch()

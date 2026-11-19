@@ -1,7 +1,7 @@
 import { getRouteApi } from '@tanstack/react-router'
 import type { AppSearch } from '#/routes/index'
 
-export const appRoute = getRouteApi('/')
+const appRoute = getRouteApi('/')
 
 export function useAppSearch() {
   return appRoute.useSearch()

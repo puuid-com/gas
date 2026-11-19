@@ -35,11 +35,16 @@ const photonSchema = z.object({
   ),
 })
 
-type PhotonProps = z.infer<typeof photonSchema>['features'][number]['properties']
+type PhotonProps = z.infer<
+  typeof photonSchema
+>['features'][number]['properties']
 
 const HOME = new Set(['Québec', 'Quebec', 'Canada'])
 
-export function toPlace(props: PhotonProps, [lng, lat]: [number, number]): Place | null {
+function toPlace(
+  props: PhotonProps,
+  [lng, lat]: [number, number],
+): Place | null {
   const street = [props.housenumber, props.street].filter(Boolean).join(' ')
   const name = props.name ?? street
   if (!name) return null

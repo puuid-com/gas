@@ -18,14 +18,21 @@ import type { Fuel, Station } from '#/lib/stations'
 const DETOUR_COUNT = 10
 
 // Shared by the map, card and list; compute once per route and dataset.
-const stopsCache = new WeakMap<ReadonlyArray<Station>, WeakMap<RouteLine, Array<RouteStop>>>()
+const stopsCache = new WeakMap<
+  ReadonlyArray<Station>,
+  WeakMap<RouteLine, Array<RouteStop>>
+>()
 const alongCache = new WeakMap<Array<RouteStop>, Map<string, AlongRoute>>()
 
 function getStops(stations: ReadonlyArray<Station>, line: RouteLine) {
   let perLine = stopsCache.get(stations)
   if (!perLine) stopsCache.set(stations, (perLine = new WeakMap()))
   let stops = perLine.get(line)
-  if (!stops) perLine.set(line, (stops = stationsAlongRoute(stations, line, MAX_CORRIDOR_KM)))
+  if (!stops)
+    perLine.set(
+      line,
+      (stops = stationsAlongRoute(stations, line, MAX_CORRIDOR_KM)),
+    )
   return stops
 }
 
@@ -34,7 +41,8 @@ function getAlong(stops: Array<RouteStop>, fuel: Fuel, corridorKm: number) {
   if (!perKey) alongCache.set(stops, (perKey = new Map()))
   const key = `${fuel}:${corridorKm}`
   let along = perKey.get(key)
-  if (!along) perKey.set(key, (along = cheapestAlongRoute(stops, fuel, corridorKm)))
+  if (!along)
+    perKey.set(key, (along = cheapestAlongRoute(stops, fuel, corridorKm)))
   return along
 }
 
@@ -53,7 +61,9 @@ export function useTrip() {
   const origin = from ? parseLatLng(from) : start
   const route = useQuery(routeQueryOptions(origin, destination))
   const line = route.data?.line ?? null
-  const along = line ? getAlong(getStops(stations, line), fuel, corridorKm) : null
+  const along = line
+    ? getAlong(getStops(stations, line), fuel, corridorKm)
+    : null
   // Real detours for the cheapest few; the rest keep the straight-line offset.
   const detours = useQuery(
     detoursQueryOptions(

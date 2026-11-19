@@ -138,9 +138,7 @@ function LoadingScreen() {
         </div>
       </div>
 
-      <div
-        className={cn('mt-auto size-11 self-end lg:size-10', floating)}
-      />
+      <div className={cn('mt-auto size-11 self-end lg:size-10', floating)} />
 
       <div
         className={cn(

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeStations, parsePrice } from './stations'
 
-const feature = (props: Record<string, unknown>, coordinates = [-73.6, 45.5]) => ({
+const feature = (
+  props: Record<string, unknown>,
+  coordinates = [-73.6, 45.5],
+) => ({
   type: 'Feature',
   geometry: { type: 'Point', coordinates },
   properties: {
@@ -48,7 +51,11 @@ describe('normalizeStations', () => {
       ]),
     )
     expect(generatedAt).toBe('2026-10-12T23:25:00Z')
-    expect(stations[0].prices).toEqual({ regular: 189.9, super: 209.9, diesel: null })
+    expect(stations[0].prices).toEqual({
+      regular: 189.9,
+      super: 209.9,
+      diesel: null,
+    })
     expect(stations[0].city).toBe('Laval')
   })
 
@@ -60,20 +67,28 @@ describe('normalizeStations', () => {
   })
 
   it('drops rows outside Quebec', () => {
-    const { stations } = normalizeStations(feed([feature({}, [0, 0]), feature({ Address: '2 rue B, Laval' })]))
+    const { stations } = normalizeStations(
+      feed([feature({}, [0, 0]), feature({ Address: '2 rue B, Laval' })]),
+    )
     expect(stations).toHaveLength(1)
   })
 
   it('cleans placeholder brands', () => {
     const { stations } = normalizeStations(
-      feed([feature({ brand: 'Aucun' }), feature({ brand: null, Address: '3 rue C' })]),
+      feed([
+        feature({ brand: 'Aucun' }),
+        feature({ brand: null, Address: '3 rue C' }),
+      ]),
     )
     expect(stations.map((s) => s.brand)).toEqual([null, null])
   })
 
   it('builds unique, URL-safe ids', () => {
     const { stations } = normalizeStations(
-      feed([feature({ Address: '5 boul. Pie-X, Québec' }), feature({ Address: '5 boul. Pie-X, Québec' })]),
+      feed([
+        feature({ Address: '5 boul. Pie-X, Québec' }),
+        feature({ Address: '5 boul. Pie-X, Québec' }),
+      ]),
     )
     expect(stations[0].id).toBe('h7a-1a1-5-boul-pie-x-quebec')
     expect(stations[1].id).toBe('h7a-1a1-5-boul-pie-x-quebec-2')

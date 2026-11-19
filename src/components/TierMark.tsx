@@ -12,10 +12,26 @@ export const TIER_BG: Record<Tier | -1, string> = {
 }
 
 /** Vertical bar in the station's regional price-tier colour. */
-export function TierBar({ tier, className }: { tier: Tier | -1; className?: string }) {
-  return <span aria-hidden className={cn('w-1.5 shrink-0 self-stretch', TIER_BG[tier], className)} />
+export function TierBar({
+  tier,
+  className,
+}: {
+  tier: Tier | -1
+  className?: string
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn('w-1.5 shrink-0 self-stretch', TIER_BG[tier], className)}
+    />
+  )
 }
 
 export function RegionStar({ className }: { className?: string }) {
-  return <IconStarFilled aria-hidden className={cn('size-3 shrink-0 text-tier-0', className)} />
+  return (
+    <IconStarFilled
+      aria-hidden
+      className={cn('size-3 shrink-0 text-tier-0', className)}
+    />
+  )
 }

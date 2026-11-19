@@ -62,13 +62,7 @@ import type { Fuel } from '#/lib/stations'
 const title = (s: Pick<StationRecord, 'brand' | 'name'>) => s.brand ?? s.name
 
 /** A price move, coloured like the map: green when cheaper, red when pricier. */
-export function Delta({
-  cents,
-  className,
-}: {
-  cents: number
-  className?: string
-}) {
+function Delta({ cents, className }: { cents: number; className?: string }) {
   const flat = Math.abs(cents) < 0.05
   const Icon = cents < 0 ? IconArrowDownRight : IconArrowUpRight
   return (

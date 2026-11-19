@@ -1,0 +1,14 @@
+{
+  "ignore": {
+    "overrides": [
+      {
+        "files": ["src/routes/_site/changelog.tsx"],
+        "rules": ["react-doctor/dangerous-html-sink"]
+      },
+      {
+        "files": ["src/components/ui/badge.tsx"],
+        "rules": ["react-doctor/only-export-components"]
+      }
+    ]
+  }
+}

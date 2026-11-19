@@ -52,7 +52,9 @@ export function TripStopRow({
 
 /** "km 84" */
 export function alongKmLabel(km: number) {
-  return m.along_km({ km: new Intl.NumberFormat(getLocale()).format(Math.round(km)) })
+  return m.along_km({
+    km: new Intl.NumberFormat(getLocale()).format(Math.round(km)),
+  })
 }
 
 /**
@@ -62,7 +64,9 @@ export function alongKmLabel(km: number) {
 export function offsetLabel(stop: RouteStop, detours: Trip['detours']) {
   const minutes = detours?.get(stop.station.id)
   if (minutes != null) {
-    return minutes < 1 ? m.on_route() : m.detour({ minutes: Math.round(minutes) })
+    return minutes < 1
+      ? m.on_route()
+      : m.detour({ minutes: Math.round(minutes) })
   }
   return stop.offsetKm < ON_ROUTE_KM
     ? m.on_route()
@@ -81,7 +85,11 @@ export function CorridorToggle({ value }: { value: CorridorKm }) {
       aria-label={m.corridor_label()}
     >
       {CORRIDORS_KM.map((km) => (
-        <ToggleGroupItem key={km} value={String(km)} className="h-7 px-2 tabular-nums">
+        <ToggleGroupItem
+          key={km}
+          value={String(km)}
+          className="h-7 px-2 tabular-nums"
+        >
           {km} km
         </ToggleGroupItem>
       ))}
@@ -126,12 +134,23 @@ export function TripStatus({
 
   if (!trip.origin) {
     if (geoStatus === 'locating')
-      return <LoadingRows rows={rows} label={m.trip_loading()} className={className} />
+      return (
+        <LoadingRows
+          rows={rows}
+          label={m.trip_loading()}
+          className={className}
+        />
+      )
     return (
       <div className={cn('flex flex-col items-start gap-2 py-3', className)}>
         <p className="text-xs text-muted-foreground">{m.trip_need_start()}</p>
         {onChooseStart && (
-          <Button variant="outline" size="sm" className="h-8" onClick={onChooseStart}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={onChooseStart}
+          >
             {m.trip_from_placeholder()}
           </Button>
         )}
@@ -140,17 +159,25 @@ export function TripStatus({
   }
 
   if (route.isPending)
-    return <LoadingRows rows={rows} label={m.trip_loading()} className={className} />
+    return (
+      <LoadingRows rows={rows} label={m.trip_loading()} className={className} />
+    )
 
   if (route.isError) {
-    const noRoute = route.error instanceof RouteError && route.error.reason === 'no_route'
+    const noRoute =
+      route.error instanceof RouteError && route.error.reason === 'no_route'
     return (
       <div className={cn('flex flex-col items-start gap-2 py-3', className)}>
         <p className="text-xs text-muted-foreground">
           {noRoute ? m.trip_no_route() : m.trip_failed()}
         </p>
         {!noRoute && (
-          <Button variant="outline" size="sm" className="h-8" onClick={() => route.refetch()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={() => route.refetch()}
+          >
             <IconRefresh />
             {m.retry()}
           </Button>
@@ -182,7 +209,10 @@ function LoadingRows({
   return (
     <div className="flex flex-col" aria-busy="true" aria-label={label}>
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className={cn('flex items-center gap-3 py-2.5', className)}>
+        <div
+          key={i}
+          className={cn('flex items-center gap-3 py-2.5', className)}
+        >
           <Skeleton className="h-9 w-1" />
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <Skeleton className="h-3.5 w-2/5" />

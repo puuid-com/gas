@@ -4,7 +4,8 @@ import { RouteError, fetchDetours, fetchRoute } from './routing'
 import type { LngLat } from './geo'
 
 /** ~10 m: GPS jitter at the start point shouldn't fetch a new route. */
-const routeKey = (p: LngLat | null) => p && `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`
+const routeKey = (p: LngLat | null) =>
+  p && `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`
 
 export function routeQueryOptions(from: LngLat | null, to: LngLat | null) {
   return queryOptions({
@@ -16,11 +17,16 @@ export function routeQueryOptions(from: LngLat | null, to: LngLat | null) {
     // The indexed line holds typed arrays; keep the instance as-is.
     structuralSharing: false,
     retry: (count, error) =>
-      !(error instanceof RouteError && error.reason === 'no_route') && count < 2,
+      !(error instanceof RouteError && error.reason === 'no_route') &&
+      count < 2,
   })
 }
 
-export function placesQueryOptions(query: string, locale: string, near: LngLat | null) {
+export function placesQueryOptions(
+  query: string,
+  locale: string,
+  near: LngLat | null,
+) {
   const q = query.trim()
   const nearKey = near && `${near.lat.toFixed(1)},${near.lng.toFixed(1)}`
   return queryOptions({

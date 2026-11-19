@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as HistoryRouteImport } from './routes/history'
+import { Route as SiteRouteImport } from './routes/_site'
+import { Route as SiteChangelogRouteImport } from './routes/_site/changelog'
+import { Route as SiteHistoryRouteImport } from './routes/_site/history'
 import { Route as ApiSnapshotRouteImport } from './routes/api/snapshot'
 
 const IndexRoute = IndexRouteImport.update({
@@ -18,10 +20,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HistoryRoute = HistoryRouteImport.update({
+const SiteRoute = SiteRouteImport.update({
+  id: '/_site',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SiteChangelogRoute = SiteChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
+  getParentRoute: () => SiteRoute,
+} as any)
+const SiteHistoryRoute = SiteHistoryRouteImport.update({
   id: '/history',
   path: '/history',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => SiteRoute,
 } as any)
 const ApiSnapshotRoute = ApiSnapshotRouteImport.update({
   id: '/api/snapshot',
@@ -31,31 +42,41 @@ const ApiSnapshotRoute = ApiSnapshotRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/history': typeof HistoryRoute
+  '/changelog': typeof SiteChangelogRoute
+  '/history': typeof SiteHistoryRoute
   '/api/snapshot': typeof ApiSnapshotRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/history': typeof HistoryRoute
+  '/changelog': typeof SiteChangelogRoute
+  '/history': typeof SiteHistoryRoute
   '/api/snapshot': typeof ApiSnapshotRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/history': typeof HistoryRoute
+  '/_site': typeof SiteRouteWithChildren
+  '/_site/changelog': typeof SiteChangelogRoute
+  '/_site/history': typeof SiteHistoryRoute
   '/api/snapshot': typeof ApiSnapshotRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/history' | '/api/snapshot'
+  fullPaths: '/' | '/changelog' | '/history' | '/api/snapshot'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/history' | '/api/snapshot'
-  id: '__root__' | '/' | '/history' | '/api/snapshot'
+  to: '/' | '/changelog' | '/history' | '/api/snapshot'
+  id:
+    | '__root__'
+    | '/'
+    | '/_site'
+    | '/_site/changelog'
+    | '/_site/history'
+    | '/api/snapshot'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  HistoryRoute: typeof HistoryRoute
+  SiteRoute: typeof SiteRouteWithChildren
   ApiSnapshotRoute: typeof ApiSnapshotRoute
 }
 
@@ -68,12 +89,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/history': {
-      id: '/history'
+    '/_site': {
+      id: '/_site'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof SiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_site/changelog': {
+      id: '/_site/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof SiteChangelogRouteImport
+      parentRoute: typeof SiteRoute
+    }
+    '/_site/history': {
+      id: '/_site/history'
       path: '/history'
       fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof SiteHistoryRouteImport
+      parentRoute: typeof SiteRoute
     }
     '/api/snapshot': {
       id: '/api/snapshot'
@@ -85,9 +120,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SiteRouteChildren {
+  SiteChangelogRoute: typeof SiteChangelogRoute
+  SiteHistoryRoute: typeof SiteHistoryRoute
+}
+
+const SiteRouteChildren: SiteRouteChildren = {
+  SiteChangelogRoute: SiteChangelogRoute,
+  SiteHistoryRoute: SiteHistoryRoute,
+}
+
+const SiteRouteWithChildren = SiteRoute._addFileChildren(SiteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  HistoryRoute: HistoryRoute,
+  SiteRoute: SiteRouteWithChildren,
   ApiSnapshotRoute: ApiSnapshotRoute,
 }
 export const routeTree = rootRouteImport

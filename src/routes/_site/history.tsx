@@ -1,12 +1,7 @@
-import { IconArrowLeft, IconRefresh } from '@tabler/icons-react'
+import { IconRefresh } from '@tabler/icons-react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import {
-  Link,
-  createFileRoute,
-  stripSearchParams,
-} from '@tanstack/react-router'
+import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
 import { z } from 'zod'
-import { Logo } from '#/components/AppHeader'
 import { FuelToggleGroup } from '#/components/FuelToggle'
 import {
   RegionTable,
@@ -55,7 +50,7 @@ export type HistorySearch = z.infer<typeof searchSchema>
 
 const ALL_REGIONS = '__all__'
 
-export const Route = createFileRoute('/history')({
+export const Route = createFileRoute('/_site/history')({
   validateSearch: searchSchema,
   search: { middlewares: [stripSearchParams(searchDefaults)] },
   loaderDeps: ({ search }) => search,
@@ -106,36 +101,12 @@ export const Route = createFileRoute('/history')({
 })
 
 function Shell({ children }: { children: React.ReactNode }) {
-  const search = Route.useSearch()
   return (
-    <div className="min-h-dvh bg-background">
-      <header className="sticky top-0 z-10 border-b bg-background pt-[env(safe-area-inset-top)]">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
-          <Link
-            to="/"
-            search={{ fuel: search.fuel }}
-            className="flex items-center gap-2"
-          >
-            <Logo />
-            <span className="text-[15px] font-semibold tracking-tight">
-              {m.app_name()}
-            </span>
-          </Link>
-          <span aria-hidden className="text-muted-foreground">
-            /
-          </span>
-          <h1 className="truncate text-sm font-medium">{m.history_title()}</h1>
-          <Button variant="ghost" size="sm" className="ml-auto" asChild>
-            <Link to="/" search={{ fuel: search.fuel }}>
-              <IconArrowLeft data-icon="inline-start" />
-              {m.history_back()}
-            </Link>
-          </Button>
-        </div>
-      </header>
-      <main className="mx-auto flex max-w-5xl flex-col gap-12 px-4 py-6 pb-[max(env(safe-area-inset-bottom),2rem)]">
-        {children}
-      </main>
+    <div className="mx-auto flex max-w-5xl flex-col gap-12 px-4 py-6 pb-8">
+      <h1 className="-mb-6 text-2xl font-semibold tracking-tight">
+        {m.history_title()}
+      </h1>
+      {children}
     </div>
   )
 }

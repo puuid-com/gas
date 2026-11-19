@@ -26,7 +26,7 @@ export interface RegionStat {
   bounds: Bounds
 }
 
-export interface StationRank {
+interface StationRank {
   /** 1 + number of stations in the region strictly cheaper (ties share a rank). */
   rank: number
   total: number
@@ -120,7 +120,7 @@ export function computeFuelStats(
   }
 }
 
-export interface Candidate {
+interface Candidate {
   station: Station
   price: number
   distanceKm: number | null
@@ -280,7 +280,7 @@ export function stopsAhead(along: AlongRoute, travelledKm: number) {
 }
 
 /** How far down the road drive mode can look for a station, at most. */
-export const AHEAD_RANGE_KM = 100
+const AHEAD_RANGE_KM = 100
 
 export interface AheadStop {
   station: Station

@@ -48,7 +48,10 @@ describe('route projection', () => {
   // East along the 45th parallel for one degree (~78.7 km), then north.
   const line = indexRoute([
     [-74, 45],
-    ...Array.from({ length: 99 }, (_, i): [number, number] => [-74 + (i + 1) / 100, 45]),
+    ...Array.from({ length: 99 }, (_, i): [number, number] => [
+      -74 + (i + 1) / 100,
+      45,
+    ]),
     [-73, 45],
     [-73, 45.5],
   ])

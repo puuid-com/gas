@@ -46,7 +46,9 @@ export function TripPanel() {
               placeholder={m.trip_from_placeholder()}
               allowMyLocation
               // Also when the map's card sends us here for a missing start.
-              autoFocus={focusFrom || (trip.active && !trip.origin && view === 'list')}
+              autoFocus={
+                focusFrom || (trip.active && !trip.origin && view === 'list')
+              }
               onSelect={(place) => {
                 setFocusFrom(false)
                 actions.setOrigin(place)
@@ -76,7 +78,9 @@ export function TripPanel() {
           )}
         </div>
 
-        {!trip.active && <p className="text-xs text-muted-foreground">{m.trip_intro()}</p>}
+        {!trip.active && (
+          <p className="text-xs text-muted-foreground">{m.trip_intro()}</p>
+        )}
 
         {trip.active && (
           <div className="flex items-center gap-2">
@@ -132,7 +136,9 @@ export function TripPanel() {
               along={along}
               detours={trip.detours}
               onSelect={(id) => setSearch({ station: id, view: 'map' })}
-              className={stop.station.id === selected ? 'border-b bg-muted' : 'border-b'}
+              className={
+                stop.station.id === selected ? 'border-b bg-muted' : 'border-b'
+              }
             />
           ))}
         </div>
