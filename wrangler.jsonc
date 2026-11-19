@@ -1,7 +1,23 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "tanstack-start-app",
+  "name": "gas",
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry"
+  "main": "src/server.ts",
+  "routes": [
+    { "pattern": "gas.odeschenes.dev", "custom_domain": true },
+    { "pattern": "gas.puuid.com", "custom_domain": true },
+  ],
+  // Price history: a snapshot of the Régie feed at 10 AM and 10 PM Quebec
+  // time. Crons run in UTC, so this fires at both the winter and summer UTC
+  // hours and the job skips the two that aren't 10 o'clock in Quebec.
+  "triggers": { "crons": ["0 2,3,14,15 * * *"] },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gas-history",
+      "database_id": "36e77bdc-da64-4f74-85b3-a9a9adba5941",
+      "migrations_dir": "migrations",
+    },
+  ],
 }

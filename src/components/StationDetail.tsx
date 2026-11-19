@@ -1,0 +1,237 @@
+import { IconX } from '@tabler/icons-react'
+import { DirectionsButton } from '#/components/DirectionsButton'
+import { StaleTag, useStaleDays } from '#/components/StaleMark'
+import { StationFreshness } from '#/components/StationFreshness'
+import { RegionStar, TierBar } from '#/components/TierMark'
+import { Button } from '#/components/ui/button'
+import { useSelector } from '@tanstack/react-store'
+import { alongKmLabel, offsetLabel } from '#/components/TripParts'
+import { useAppSearch, useSetSearch } from '#/hooks/use-app-search'
+import { useTrip } from '#/hooks/use-trip'
+import { useFuelStats, useStations } from '#/hooks/use-stations'
+import { formatCents, formatPrice } from '#/lib/format'
+import { distanceKm, formatDistance } from '#/lib/geo'
+import { locationStore } from '#/stores/location'
+import { fuelLabel, stationSubtitle, stationTitle } from '#/lib/i18n'
+import { FUELS } from '#/lib/stations'
+import { cn } from '#/lib/utils'
+import { getLocale } from '#/paraglide/runtime'
+import { m } from '#/paraglide/messages'
+
+export function StationDetail({
+  id,
+  children,
+}: {
+  id: string
+  children?: React.ReactNode
+}) {
+  const { byId } = useStations()
+  const { fuel } = useAppSearch()
+  const setSearch = useSetSearch()
+  const stats = useFuelStats(fuel)
+  const locale = getLocale()
+  const fix = useSelector(locationStore, (s) => s.fix)
+  const driving = useSelector(locationStore, (s) => s.driving)
+  const trip = useTrip()
+  const staleDays = useStaleDays(id)
+
+  const station = byId.get(id)
+  // Its place on the trip, when it's in the corridor.
+  const stop = trip.along?.candidates.find((c) => c.station.id === id)
+  if (!station) return null
+
+  const price = station.prices[fuel]
+  const rank = stats.ranks.get(id)
+  const region = stats.byRegion.get(station.region)
+  const subtitle = stationSubtitle(station)
+  const delta = price != null && region ? price - region.median : null
+
+  const compactDetail = (
+    <section
+      aria-label={stationTitle(station)}
+      className={cn('flex flex-col gap-4 p-4', !driving && 'lg:hidden')}
+    >
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold break-words">
+            {stationTitle(station)}
+          </h2>
+          <p className="text-sm text-muted-foreground break-words">
+            {station.address}
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-11 shrink-0"
+          aria-label={m.close()}
+          onClick={() => setSearch({ station: undefined })}
+        >
+          <IconX />
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {m.sort_distance()}
+            {fix && <> · {m.straight_line()}</>}
+          </p>
+          <p
+            className={cn(
+              'font-bold tabular-nums tracking-tight',
+              fix == null ? 'text-2xl' : 'text-5xl leading-tight',
+            )}
+          >
+            {fix == null
+              ? m.unavailable()
+              : formatDistance(distanceKm(fix, station), locale)}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {fuelLabel(fuel)} · ¢/L
+          </p>
+          <p
+            className={cn(
+              'text-3xl font-semibold tabular-nums tracking-tight',
+              staleDays != null && 'text-muted-foreground',
+            )}
+          >
+            {price == null ? m.unavailable() : formatPrice(price, locale)}
+          </p>
+          {staleDays != null && <StaleTag days={staleDays} />}
+        </div>
+      </div>
+      <DirectionsButton
+        to={station}
+        then={stop ? (trip.destination ?? undefined) : undefined}
+        size="xl"
+      />
+    </section>
+  )
+
+  if (driving) return compactDetail
+
+  return (
+    <>
+      {compactDetail}
+      <section
+        aria-label={stationTitle(station)}
+        className="hidden flex-col lg:flex"
+      >
+        <div className="flex items-start gap-3 px-4 pt-4 pb-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-base font-semibold tracking-tight">
+              {stationTitle(station)}
+            </h2>
+            {subtitle && (
+              <p className="truncate text-xs text-muted-foreground">
+                {subtitle}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {station.address}
+              {stop ? (
+                <span className="tabular-nums">
+                  {' · '}
+                  {alongKmLabel(stop.alongKm)} ·{' '}
+                  {offsetLabel(stop, trip.detours)}
+                </span>
+              ) : (
+                fix && (
+                  <span className="tabular-nums">
+                    {' · '}
+                    {formatDistance(distanceKm(fix, station), locale)}{' '}
+                    <span className="opacity-70">({m.straight_line()})</span>
+                  </span>
+                )
+              )}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="-mt-1 -mr-2"
+            aria-label={m.close()}
+            onClick={() => setSearch({ station: undefined })}
+          >
+            <IconX />
+          </Button>
+        </div>
+
+        <div
+          className="grid grid-cols-3 border-y"
+          role="group"
+          aria-label={m.prices_heading()}
+        >
+          {FUELS.map((f) => {
+            const p = station.prices[f]
+            return (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={f === fuel}
+                onClick={() => setSearch({ fuel: f })}
+                className={cn(
+                  'border-r px-4 py-2.5 text-left transition-colors last:border-r-0 hover:bg-muted/60',
+                  f === fuel ? 'bg-muted' : 'text-muted-foreground',
+                )}
+              >
+                <div className="text-[11px] tracking-wide uppercase">
+                  {fuelLabel(f)}
+                </div>
+                <div
+                  className={cn(
+                    'text-xl font-semibold tabular-nums tracking-tight',
+                    f === fuel && 'text-foreground',
+                    p == null && 'text-base font-normal',
+                  )}
+                >
+                  {p == null ? '—' : formatPrice(p, locale)}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex flex-col gap-3 p-4">
+          {rank && region && (
+            <div className="flex items-stretch gap-2.5 text-xs">
+              <TierBar tier={rank.tier} />
+              <div className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1.5 font-medium">
+                  {rank.regionCheapest && <RegionStar />}
+                  {rank.rank === 1
+                    ? m.rank_first({
+                        region: station.region,
+                        total: rank.total,
+                      })
+                    : m.rank_nth({
+                        region: station.region,
+                        rank: rank.rank,
+                        total: rank.total,
+                      })}
+                </span>
+                {delta != null && (
+                  <span className="text-muted-foreground">
+                    {Math.abs(delta) < 0.05
+                      ? m.at_median()
+                      : delta < 0
+                        ? m.below_median({ value: formatCents(delta, locale) })
+                        : m.above_median({ value: formatCents(delta, locale) })}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          <StationFreshness id={id} fuel={fuel} />
+          {children}
+          <DirectionsButton
+            to={station}
+            then={stop ? (trip.destination ?? undefined) : undefined}
+          />
+        </div>
+      </section>
+    </>
+  )
+}

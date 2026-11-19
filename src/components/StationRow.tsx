@@ -1,0 +1,96 @@
+import { IconClockExclamation } from '@tabler/icons-react'
+import { useStaleDays } from '#/components/StaleMark'
+import { Button } from '#/components/ui/button'
+import { RegionStar, TierBar } from '#/components/TierMark'
+import { formatDistance } from '#/lib/geo'
+import { formatPrice } from '#/lib/format'
+import { stationTitle } from '#/lib/i18n'
+import { cn } from '#/lib/utils'
+import { getLocale } from '#/paraglide/runtime'
+import { m } from '#/paraglide/messages'
+import type { Tier } from '#/lib/pricing'
+import type { Station } from '#/lib/stations'
+
+interface StationRowProps {
+  station: Station
+  price: number | null
+  tier: Tier | -1
+  /** Cheapest of its group (region or route). */
+  star?: boolean
+  distanceKm?: number | null
+  /** Replaces the town under the name. */
+  subtitle?: React.ReactNode
+  /** Replaces the distance under the price. */
+  meta?: React.ReactNode
+  onSelect: (id: string) => void
+  className?: string
+}
+
+export function StationRow({
+  station,
+  price,
+  tier,
+  star,
+  distanceKm,
+  subtitle,
+  meta,
+  onSelect,
+  className,
+}: StationRowProps) {
+  const locale = getLocale()
+  // A price that hasn't moved in a week is probably wrong: don't sell it as cheap.
+  const staleDays = useStaleDays(station.id)
+  const stale = staleDays != null
+
+  return (
+    <Button
+      variant="ghost"
+      type="button"
+      onClick={() => onSelect(station.id)}
+      className={cn(
+        'flex h-auto w-full items-center justify-start gap-3 border-0 px-3 py-2.5 text-left whitespace-normal transition-colors outline-none hover:bg-muted/70 focus-visible:bg-muted',
+        className,
+      )}
+    >
+      <TierBar tier={tier} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5 text-sm font-medium">
+          <span className="truncate">{stationTitle(station)}</span>
+          {star && <RegionStar />}
+          {stale && (
+            <span
+              className="flex shrink-0 items-center gap-0.5 text-xs font-medium text-warning tabular-nums"
+              title={m.stale_title()}
+            >
+              <IconClockExclamation aria-hidden className="size-3.5" />
+              {m.stale_days({ days: staleDays })}
+              <span className="sr-only">{m.stale_title()}</span>
+            </span>
+          )}
+        </div>
+        <div className="truncate text-xs text-muted-foreground">
+          {subtitle ?? (station.city || station.address)}
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-col items-end">
+        <div
+          className={cn(
+            'text-2xl leading-none font-semibold tracking-tight tabular-nums',
+            // The low prices are the ones worth finding: fill them in.
+            !stale && tier === 0 && 'bg-tier-0 px-1.5 py-1 text-tier-0-fg',
+            !stale && tier === 1 && 'bg-tier-1 px-1.5 py-1 text-tier-1-fg',
+            stale && 'text-muted-foreground',
+            price == null && 'text-sm font-normal text-muted-foreground',
+          )}
+        >
+          {price == null ? m.unavailable() : formatPrice(price, locale)}
+        </div>
+        {(meta != null || distanceKm != null) && (
+          <div className="mt-1 text-xs text-muted-foreground tabular-nums">
+            {meta ?? formatDistance(distanceKm!, locale)}
+          </div>
+        )}
+      </div>
+    </Button>
+  )
+}
