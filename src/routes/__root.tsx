@@ -13,7 +13,7 @@ import { Toaster } from '#/components/ui/sonner'
 import { TooltipProvider } from '#/components/ui/tooltip'
 import { initTheme, themeScript } from '#/stores/theme'
 
-import { getLocale } from '#/paraglide/runtime'
+import { getLocale, getTextDirection } from '#/paraglide/runtime'
 import { m } from '#/paraglide/messages'
 
 import appCss from '../styles.css?url'
@@ -64,7 +64,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   useEffect(() => initTheme(), [])
 
   return (
-    <html lang={getLocale()} suppressHydrationWarning>
+    <html lang={getLocale()} dir={getTextDirection()} suppressHydrationWarning>
       <head>
         <HeadContent />
         <ScriptOnce children={themeScript} />

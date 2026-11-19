@@ -1,7 +1,7 @@
 {
   "name": "gas",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "packageManager": "bun@1.4.2",
   "imports": {
@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit",
     "test:watch": "vitest",
     "doctor": "react-doctor",
-    "i18n:compile": "paraglide-js compile --strategy cookie preferredLanguage baseLocale --silent",
+    "i18n:compile": "paraglide-js compile --strategy url baseLocale --silent",
     "prepare": "git config core.hooksPath .githooks; bun run i18n:compile && bun run cf-typegen"
   },
   "dependencies": {

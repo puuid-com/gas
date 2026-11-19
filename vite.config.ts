@@ -22,7 +22,7 @@ const config = defineConfig({
     paraglideVitePlugin({
       project: './project.inlang',
       outdir: './src/paraglide',
-      strategy: ['cookie', 'preferredLanguage', 'baseLocale'],
+      strategy: ['url', 'baseLocale'],
     }),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tailwindcss(),

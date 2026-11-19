@@ -12,6 +12,14 @@ import { m } from '#/paraglide/messages'
 // and reuse the `m.*` labels the real UI shows. Tooling, docs and refactor
 // releases get none. `previews.test.ts` checks every key is a real release.
 export const previews: Record<string, ComponentType> = {
+  '1.1.0': () => (
+    <Figure>
+      <BeforeAfter
+        before={<Address path="/history" />}
+        after={<Address path="/en/history" />}
+      />
+    </Figure>
+  ),
   '1.0.1': () => (
     <Figure>
       <BeforeAfter
@@ -96,6 +104,17 @@ function Fuels({ selected }: { selected: string }) {
           {fuelLabel(fuel)}
         </span>
       ))}
+    </div>
+  )
+}
+
+// The browser's address bar on the English price history page.
+function Address({ path }: { path: string }) {
+  return (
+    <div className="p-3">
+      <div className="rounded-md border bg-muted px-2.5 py-1.5 font-mono">
+        gas.puuid.com{path}
+      </div>
     </div>
   )
 }

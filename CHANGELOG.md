@@ -8,6 +8,13 @@ Every change bumps `version` in `package.json` and adds an entry here, newest fi
 
 Visible changes also get a picture on the changelog page: add the version to `previews` in `src/components/changelog/previews.tsx`.
 
+## [1.1.0] - 2026-11-18
+
+### Changed
+
+- The language is part of the address: French pages stay where they were, English pages are under /en (gas.puuid.com/en/history), so a shared link opens in the language it was shared in.
+- If you had picked English before, your first visit takes you to the English address once.
+
 ## [1.0.1] - 2026-11-18
 
 ### Fixed
